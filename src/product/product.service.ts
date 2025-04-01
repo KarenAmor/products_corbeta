@@ -36,11 +36,71 @@ export class ProductService {
         return product;
     }
 
-    async create(productData: Partial<Product>): Promise<Product> {
-        const product = this.productRepository.create(productData);
-        const savedProduct = await this.productRepository.save(product);
-        await this.productLogsService.createLog(savedProduct.reference, 'CREATE', null, savedProduct);
-        return savedProduct;
+    async createBulk(productsData: Partial<Product>[], batchSize = 100): Promise<{ count: number, products: Product[], errors: any[] }> {
+        if (!productsData || productsData.length === 0) {
+            throw new Error('No products provided for bulk creation');
+        }
+    
+        const result = {
+            count: 0,
+            products: [] as Product[],
+            errors: [] as any[]
+        };
+    
+        await this.productRepository.manager.transaction(async (transactionalEntityManager) => {
+            for (let i = 0; i < productsData.length; i += batchSize) {
+                const batch = productsData.slice(i, i + batchSize);
+                const validProducts: Partial<Product>[] = [];
+                const batchErrors: any[] = [];
+    
+                // Validación manual de cada producto
+                for (const productData of batch) {
+                    try {
+                        // Ejemplo de validación manual: verificar campos requeridos
+                        if (!productData.reference || !productData.name) {
+                            throw new Error('Reference and name are required');
+                        }
+    
+                        const productEntity = this.productRepository.create(productData);
+                        validProducts.push(productData);
+                    } catch (error) {
+                        batchErrors.push({
+                            product: productData,
+                            error: error.message
+                        });
+                    }
+                }
+    
+                if (validProducts.length > 0) {
+                    try {
+                        const createdBatch = await transactionalEntityManager.save(
+                            this.productRepository.create(validProducts)
+                        );
+    
+                        for (const product of createdBatch) {
+                            await this.productLogsService.createLog(
+                                product.reference,
+                                'CREATE',
+                                null,
+                                product
+                            );
+                        }
+    
+                        result.count += createdBatch.length;
+                        result.products.push(...createdBatch);
+                    } catch (error) {
+                        batchErrors.push({
+                            batch: validProducts,
+                            error: error.message
+                        });
+                    }
+                }
+    
+                result.errors.push(...batchErrors);
+            }
+        });
+    
+        return result;
     }
 
     async update(reference: string, updateData: Partial<Product>): Promise<Product> {
