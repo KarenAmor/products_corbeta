@@ -4,13 +4,6 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-console.log('SMTP Config:', {
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  user: process.env.SMTP_USER,
-  pass: process.env.SMTP_PASSWORD ? '******' : 'Not defined'
-});
-
 @Injectable()
 export class ErrorNotificationService {
   private transporter;
