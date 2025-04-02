@@ -4,15 +4,15 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  // Configuración de Swagger
+  // Swagger configuration
   const config = new DocumentBuilder()
-    .setTitle('API de Productos')
-    .setDescription('API para la gestión de productos')
+    .setTitle('Products API')
+    .setDescription('API for product management')
     .setVersion('1.0')
     .addTag('products')  
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api-docs', app, document);  // Accede a la documentación en /api-docs
+  SwaggerModule.setup('api-docs', app, document); 
 
   await app.listen(process.env.PORT ?? 3000);
 }

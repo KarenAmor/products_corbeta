@@ -14,7 +14,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ErrorNotificationService } from './error-notification.service';
 import { Product } from './entities/product.entity';
 
-@ApiTags('productos')
+@ApiTags('products')
 @Controller('products')
 export class ProductController {
   constructor(
@@ -23,8 +23,8 @@ export class ProductController {
   ) { }
 
   @Get()
-  @ApiOperation({ summary: 'Obtener todos los productos' })
-  @ApiResponse({ status: 200, description: 'Lista de productos', type: [Product] })
+  @ApiOperation({ summary: 'Get all products' })
+  @ApiResponse({ status: 200, description: 'List of products', type: [Product] })
   async findAll(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
@@ -33,99 +33,99 @@ export class ProductController {
       return await this.productService.findAll(page, limit);
     } catch (error) {
       await this.errorNotificationService.sendErrorEmail(
-        `Error en findAll: ${error.message}`,
+        `Error in findAll: ${error.message}`,
       );
-      throw new InternalServerErrorException('Error al obtener productos');
+      throw new InternalServerErrorException('Error retrieving products');
     }
   }
 
   @Get('search')
-  @ApiOperation({ summary: 'Buscar productos por palabra clave' })
-  @ApiResponse({ status: 200, description: 'Productos encontrados', type: [Product] })
+  @ApiOperation({ summary: 'Search products by keyword' })
+  @ApiResponse({ status: 200, description: 'Found products', type: [Product] })
   async search(@Query('keyword') keyword: string): Promise<Product[]> {
     try {
       return await this.productService.searchByKeyword(keyword);
     } catch (error) {
       await this.errorNotificationService.sendErrorEmail(
-        `Error en search: ${error.message}`,
+        `Error in search: ${error.message}`,
       );
-      throw new InternalServerErrorException('Error en la búsqueda de productos');
+      throw new InternalServerErrorException('Error searching for products');
     }
   }
 
   @Get(':reference')
-  @ApiOperation({ summary: 'Obtener producto por referencia' })
-  @ApiResponse({ status: 200, description: 'Producto encontrado', type: Product })
-  @ApiResponse({ status: 404, description: 'Producto no encontrado' })
+  @ApiOperation({ summary: 'Get product by reference' })
+  @ApiResponse({ status: 200, description: 'Product found', type: Product })
+  @ApiResponse({ status: 404, description: 'Product not found' })
   async findOne(@Param('reference') reference: string): Promise<Product> {
     try {
       return await this.productService.findOne(reference);
     } catch (error) {
       await this.errorNotificationService.sendErrorEmail(
-        `Error en findOne: ${error.message}`,
+        `Error in findOne: ${error.message}`,
       );
-      throw new InternalServerErrorException('Error al obtener el producto');
+      throw new InternalServerErrorException('Error retrieving the product');
     }
   }
   
   @Post()
-  @ApiOperation({ summary: 'Crear productos en masa' })
-  @ApiResponse({ status: 201, description: 'Productos creados exitosamente', type: [Product] })
+  @ApiOperation({ summary: 'Create products in bulk' })
+  @ApiResponse({ status: 201, description: 'Products created successfully', type: [Product] })
   async createBulk(@Body() productsData: Partial<Product>[], @Query('batchSize') batchSize = 100) {
     try {
       const result = await this.productService.createBulk(productsData, Number(batchSize));
   
-      // Si hay errores, enviar un email con los detalles
+      // If there are errors, send an email with the details
       if (result.errors.length > 0) {
         const errorDetails = result.errors.map(err => {
           if (err.product) {
-            return `Producto con reference "${err.product.reference}": ${err.error}`;
+            return `Product with reference "${err.product.reference}": ${err.error}`;
           } else if (err.batch) {
-            return `Error al guardar lote: ${err.error}`;
+            return `Error saving batch: ${err.error}`;
           }
-          return `Error desconocido: ${err}`;
+          return `Unknown error: ${err}`;
         }).join('\n');
   
         await this.errorNotificationService.sendErrorEmail(
-          `Errores al crear productos en masa:\n${errorDetails}`
+          `Errors creating products in bulk:\n${errorDetails}`
         );
       }
   
       return result;
     } catch (error) {
       await this.errorNotificationService.sendErrorEmail(
-        `Error crítico en createBulk: ${error.message}`
+        `Critical error in createBulk: ${error.message}`
       );
-      throw new InternalServerErrorException('Error al crear productos en masa');
+      throw new InternalServerErrorException('Error creating products in bulk');
     }
   }
 
   @Put(':reference')
-  @ApiOperation({ summary: 'Actualizar producto' })
-  @ApiResponse({ status: 200, description: 'Producto actualizado', type: Product })
+  @ApiOperation({ summary: 'Update product' })
+  @ApiResponse({ status: 200, description: 'Product updated', type: Product })
   async update(@Param('reference') reference: string, @Body() product: Partial<Product>): Promise<Product> {
     try {
       return await this.productService.update(reference, product);
     } catch (error) {
       await this.errorNotificationService.sendErrorEmail(
-        `Error en update: ${error.message}`,
+        `Error in update: ${error.message}`,
       );
-      throw new InternalServerErrorException('Error al actualizar el producto');
+      throw new InternalServerErrorException('Error updating the product');
     }
   }
 
   @Delete(':reference')
-  @ApiOperation({ summary: 'Eliminar producto' })
-  @ApiResponse({ status: 200, description: 'Producto eliminado exitosamente' })
+  @ApiOperation({ summary: 'Delete product' })
+  @ApiResponse({ status: 200, description: 'Product deleted successfully' })
   async remove(@Param('reference') reference: string): Promise<{ message: string }> {
     try {
       await this.productService.remove(reference);
       return { message: 'Product deleted successfully' };
     } catch (error) {
       await this.errorNotificationService.sendErrorEmail(
-        `Error en remove: ${error.message}`,
+        `Error in remove: ${error.message}`,
       );
-      throw new InternalServerErrorException('Error al eliminar el producto');
+      throw new InternalServerErrorException('Error deleting the product');
     }
   }
-}  
+}

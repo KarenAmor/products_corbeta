@@ -8,7 +8,7 @@ console.log('SMTP Config:', {
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
   user: process.env.SMTP_USER,
-  pass: process.env.SMTP_PASSWORD ? '******' : 'No definida', // Ocultar contraseña
+  pass: process.env.SMTP_PASSWORD ? '******' : 'Not defined'
 });
 
 @Injectable()
@@ -30,16 +30,16 @@ export class ErrorNotificationService {
   async sendErrorEmail(errorMessage: string) {
     const mailOptions = {
       from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
-      to: process.env.SMTP_USER, // O el correo del admin
-      subject: '⚠️ Error en el Sistema',
-      text: `Se ha detectado un error:\n\n${errorMessage}`,
+      to: process.env.SMTP_USER, 
+      subject: '⚠️ System Error',
+      text: `An error has been detected:\n\n${errorMessage}`,
     };
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log('Correo de error enviado.');
+      console.log('Error email sent.');
     } catch (error) {
-      console.error('Error enviando correo:', error);
+      console.error('Error sending email:', error);
     }
   }
 }
