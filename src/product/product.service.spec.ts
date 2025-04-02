@@ -12,7 +12,7 @@ describe('ProductService', () => {
   let productLogsService: any;
 
   beforeEach(async () => {
-    // Se crea el mock del repositorio
+    // Mock for the repository
     productRepository = {
       findAndCount: jest.fn(),
       find: jest.fn(),
@@ -20,7 +20,7 @@ describe('ProductService', () => {
       create: jest.fn(),
       save: jest.fn(),
       remove: jest.fn(),
-      // Se simula el uso de una transacción, invocando directamente la función callback
+      // Simulate transaction usage by directly invoking the callback function
       manager: {
         transaction: jest.fn(async (cb: (repo: any) => Promise<void>) => {
           await cb(productRepository);
@@ -28,7 +28,7 @@ describe('ProductService', () => {
       },
     };
 
-    // Se crea el mock del servicio de logs
+    // Mock for the logs service
     productLogsService = {
       createLog: jest.fn(),
     };
@@ -45,8 +45,8 @@ describe('ProductService', () => {
   });
 
   describe('findAll', () => {
-    it('debe retornar los productos y el total', async () => {
-      const fakeProducts = [{ id: 1, reference: 'ref1', name: 'Producto de prueba' }];
+    it('should return products and total count', async () => {
+      const fakeProducts = [{ id: 1, reference: 'ref1', name: 'Test Product' }];
       const total = 1;
       productRepository.findAndCount.mockResolvedValue([fakeProducts, total]);
 
@@ -57,11 +57,11 @@ describe('ProductService', () => {
   });
 
   describe('searchByKeyword', () => {
-    it('debe retornar los productos filtrados por keyword', async () => {
-      const keyword = 'prueba';
-      const fakeProducts = [{ id: 1, reference: 'ref1', name: 'Producto de prueba' }];
+    it('should return products filtered by keyword', async () => {
+      const keyword = 'test';
+      const fakeProducts = [{ id: 1, reference: 'ref1', name: 'Test Product' }];
       productRepository.find.mockResolvedValue(fakeProducts);
-  
+
       const result = await service.searchByKeyword(keyword);
       expect(result).toEqual(fakeProducts);
       expect(productRepository.find).toHaveBeenCalledWith({
@@ -71,9 +71,9 @@ describe('ProductService', () => {
   });
 
   describe('findOne', () => {
-    it('debe retornar un producto si existe', async () => {
+    it('should return a product if it exists', async () => {
       const reference = 'ref1';
-      const fakeProduct = { id: 1, reference, name: 'Producto de prueba' };
+      const fakeProduct = { id: 1, reference, name: 'Test Product' };
       productRepository.findOne.mockResolvedValue(fakeProduct);
 
       const result = await service.findOne(reference);
@@ -81,8 +81,8 @@ describe('ProductService', () => {
       expect(productRepository.findOne).toHaveBeenCalledWith({ where: { reference } });
     });
 
-    it('debe lanzar NotFoundException si el producto no se encuentra', async () => {
-      const reference = 'ref-noexiste';
+    it('should throw NotFoundException if product is not found', async () => {
+      const reference = 'non-existent-ref';
       productRepository.findOne.mockResolvedValue(null);
 
       await expect(service.findOne(reference)).rejects.toThrow(NotFoundException);
@@ -90,19 +90,19 @@ describe('ProductService', () => {
   });
 
   describe('createBulk', () => {
-    it('debe lanzar error si no se proveen productos', async () => {
+    it('should throw error if no products are provided', async () => {
       await expect(service.createBulk([])).rejects.toThrow('No products provided for bulk creation');
     });
 
-    it('debe crear productos en bulk y registrar logs', async () => {
+    it('should create products in bulk and log the actions', async () => {
       const productsData = [
-        { reference: 'ref1', name: 'Producto 1' },
-        { reference: 'ref2', name: 'Producto 2' },
+        { reference: 'ref1', name: 'Product 1' },
+        { reference: 'ref2', name: 'Product 2' },
       ];
 
-      // Simulamos que create devuelve el objeto sin modificaciones
+      // Simulate create returning the data unchanged
       productRepository.create.mockImplementation((data) => data);
-      // Simulamos que save devuelve el producto con un id asignado
+      // Simulate save returning the product with an assigned id
       productRepository.save.mockImplementation((data) =>
         Promise.resolve({ id: Math.floor(Math.random() * 1000), ...data })
       );
@@ -112,15 +112,15 @@ describe('ProductService', () => {
       expect(result.count).toBe(2);
       expect(result.products.length).toBe(2);
       expect(result.errors.length).toBe(0);
-      // Se deben llamar dos logs (uno por cada producto)
+      // Two logs should be created (one for each product)
       expect(productLogsService.createLog).toHaveBeenCalledTimes(2);
     });
 
-    it('debe capturar errores en productos inválidos', async () => {
+    it('should capture errors for invalid products', async () => {
       const productsData = [
-        { reference: 'ref1', name: 'Producto 1' },
-        { reference: 'ref1', name: 'Producto duplicado' }, // referencia duplicada
-        { reference: 'ref3' }, // falta el campo name
+        { reference: 'ref1', name: 'Product 1' },
+        { reference: 'ref1', name: 'Duplicate Product' }, // duplicate reference
+        { reference: 'ref3' }, // missing name field
       ];
 
       productRepository.create.mockImplementation((data) => data);
@@ -130,26 +130,26 @@ describe('ProductService', () => {
 
       const result = await service.createBulk(productsData, 2);
 
-      // Solo se debería crear el primer producto
+      // Only the first product should be created
       expect(result.count).toBe(1);
       expect(result.products.length).toBe(1);
-      // Se esperan 2 errores: uno por duplicidad y otro por campos requeridos
+      // Expect 2 errors: one for duplicate and one for missing fields
       expect(result.errors.length).toBe(2);
     });
   });
 
   describe('update', () => {
-    it('debe actualizar un producto y registrar el log de actualización', async () => {
+    it('should update a product and log the update action', async () => {
       const reference = 'ref1';
-      const oldProduct = { id: 1, reference, name: 'Nombre Antiguo' };
-      const updateData = { name: 'Nombre Nuevo' };
+      const oldProduct = { id: 1, reference, name: 'Old Name' };
+      const updateData = { name: 'New Name' };
 
       productRepository.findOne.mockResolvedValue(oldProduct);
       productRepository.save.mockResolvedValue({ ...oldProduct, ...updateData });
 
       const result = await service.update(reference, updateData);
 
-      expect(result.name).toBe('Nombre Nuevo');
+      expect(result.name).toBe('New Name');
       expect(productLogsService.createLog).toHaveBeenCalledWith(
         reference,
         'UPDATE',
@@ -160,9 +160,9 @@ describe('ProductService', () => {
   });
 
   describe('remove', () => {
-    it('debe eliminar un producto y registrar el log de eliminación', async () => {
+    it('should remove a product and log the delete action', async () => {
       const reference = 'ref1';
-      const fakeProduct = { id: 1, reference, name: 'Producto de prueba' };
+      const fakeProduct = { id: 1, reference, name: 'Test Product' };
 
       productRepository.findOne.mockResolvedValue(fakeProduct);
       productRepository.remove.mockResolvedValue(fakeProduct);
