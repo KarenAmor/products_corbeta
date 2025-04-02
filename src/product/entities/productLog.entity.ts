@@ -1,6 +1,8 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 
+type JsonData = Record<string, unknown> | null;
+
 @Entity('product_logs')
 export class ProductLog {
   @PrimaryGeneratedColumn()
@@ -31,7 +33,7 @@ export class ProductLog {
     nullable: true,
     additionalProperties: true,  // Allow any key-value pairs
   })
-  old_data: any;
+  old_data: JsonData;
 
   @Column({ type: 'json', nullable: true })
   @ApiProperty({
@@ -40,7 +42,7 @@ export class ProductLog {
     nullable: true,
     additionalProperties: true,  // Allow any key-value pairs
   })
-  new_data: any;
+  new_data: JsonData;
 
   @CreateDateColumn()
   @ApiProperty({
