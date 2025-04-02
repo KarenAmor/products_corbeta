@@ -48,50 +48,45 @@ export class ProductService {
             errors: [] as any[]
         };
     
+        // Conjunto para rastrear referencias únicas y evitar duplicados
+        const referenceSet = new Set<string>();
+    
         await this.productRepository.manager.transaction(async (transactionalEntityManager) => {
             for (let i = 0; i < productsData.length; i += batchSize) {
                 const batch = productsData.slice(i, i + batchSize);
-                const validProducts: Partial<Product>[] = [];
                 const batchErrors: any[] = [];
     
-                // Validación manual de cada producto
                 for (const productData of batch) {
                     try {
-                        // Ejemplo de validación manual: verificar campos requeridos
+                        // Validar campos requeridos
                         if (!productData.reference || !productData.name) {
                             throw new Error('Reference and name are required');
                         }
     
+                        // Validar unicidad de reference
+                        if (referenceSet.has(productData.reference)) {
+                            throw new Error(`Duplicate reference '${productData.reference}'`);
+                        }
+    
+                        referenceSet.add(productData.reference);
+    
+                        // Crear y guardar el producto individualmente
                         const productEntity = this.productRepository.create(productData);
-                        validProducts.push(productData);
+                        const createdProduct = await transactionalEntityManager.save(productEntity);
+    
+                        // Registrar el log del producto creado
+                        await this.productLogsService.createLog(
+                            createdProduct.reference,
+                            'CREATE',
+                            null,
+                            instanceToPlain(createdProduct)
+                        );
+    
+                        result.count += 1;
+                        result.products.push(createdProduct);
                     } catch (error) {
                         batchErrors.push({
                             product: productData,
-                            error: error.message
-                        });
-                    }
-                }
-    
-                if (validProducts.length > 0) {
-                    try {
-                        const createdBatch = await transactionalEntityManager.save(
-                            this.productRepository.create(validProducts)
-                        );
-    
-                        for (const product of createdBatch) {
-                            await this.productLogsService.createLog(
-                                product.reference,
-                                'CREATE',
-                                null,
-                                instanceToPlain(product)
-                            );
-                        }
-    
-                        result.count += createdBatch.length;
-                        result.products.push(...createdBatch);
-                    } catch (error) {
-                        batchErrors.push({
-                            batch: validProducts,
                             error: error.message
                         });
                     }
@@ -103,7 +98,7 @@ export class ProductService {
     
         return result;
     }
-
+    
     async update(reference: string, updateData: Partial<Product>): Promise<Product> {
         const product = await this.findOne(reference);
         const oldData = instanceToPlain(product);
