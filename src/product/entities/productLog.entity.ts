@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 
-type JsonData = Record<string, unknown> | null;
+type JsonData = Record<string, any> | null;
 
 @Entity('product_logs')
 export class ProductLog {

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
+import { instanceToPlain } from 'class-transformer';
 import { Product } from './entities/product.entity';
 import { ProductLogsService } from './productLogs.service';
 
@@ -82,7 +83,7 @@ export class ProductService {
                                 product.reference,
                                 'CREATE',
                                 null,
-                                product
+                                instanceToPlain(product)
                             );
                         }
     
@@ -105,16 +106,16 @@ export class ProductService {
 
     async update(reference: string, updateData: Partial<Product>): Promise<Product> {
         const product = await this.findOne(reference);
-        const oldData = { ...product };
+        const oldData = instanceToPlain(product);
         Object.assign(product, updateData);
         const updatedProduct = await this.productRepository.save(product);
-        await this.productLogsService.createLog(reference, 'UPDATE', oldData, updatedProduct);
+        await this.productLogsService.createLog(reference, 'UPDATE', oldData, instanceToPlain(updatedProduct));
         return updatedProduct;
     }
 
     async remove(reference: string): Promise<void> {
         const product = await this.findOne(reference);
         await this.productRepository.remove(product);
-        await this.productLogsService.createLog(reference, 'DELETE', product, null);
+        await this.productLogsService.createLog(reference, 'DELETE', instanceToPlain(product), null);
     }
 }
