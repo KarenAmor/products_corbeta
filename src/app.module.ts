@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProductModule } from './product/product.module';
+import { AuthModule } from './auth/auth.module';
 
 // Cargar variables de entorno al inicio
 dotenv.config();
@@ -21,6 +22,7 @@ dotenv.config();
       synchronize: process.env.DB_SYNCHRONIZE === 'true',
     }),
     ProductModule,
+    AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],
