@@ -13,6 +13,8 @@ import { ProductService } from './product.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ErrorNotificationService } from './error-notification.service';
 import { Product } from './entities/product.entity';
+import { CreateProductDto } from '../product/dto/createProductDto';
+import { UpdateProductDto } from '../product/dto/updateProductDto';
 
 @ApiTags('products')
 @Controller('products')
@@ -71,10 +73,16 @@ export class ProductController {
   @Post()
   @ApiOperation({ summary: 'Create products in bulk' })
   @ApiResponse({ status: 201, description: 'Products created successfully', type: [Product] })
-  async createBulk(@Body() productsData: Partial<Product>[], @Query('batchSize') batchSize = 100) {
+  async createBulk(@Body() productsData: CreateProductDto[], @Query('batchSize') batchSize = 100) {
     try {
-      const result = await this.productService.createBulk(productsData, Number(batchSize));
-  
+      const result = await this.productService.createBulk(
+        productsData.map(product => ({
+          ...product,
+          isActive: product.isActive ? 1 : 0, // Conversión rápida de boolean a number
+        })),
+        Number(batchSize),
+      );
+      
       // If there are errors, send an email with the details
       if (result.errors.length > 0) {
         const errorDetails = result.errors.map(err => {
@@ -103,9 +111,12 @@ export class ProductController {
   @Put(':reference')
   @ApiOperation({ summary: 'Update product' })
   @ApiResponse({ status: 200, description: 'Product updated', type: Product })
-  async update(@Param('reference') reference: string, @Body() product: Partial<Product>): Promise<Product> {
+  async update(@Param('reference') reference: string, @Body() product: UpdateProductDto): Promise<Product> {
     try {
-      return await this.productService.update(reference, product);
+      return await this.productService.update(reference, {
+        ...product,
+        isActive: product.isActive !== undefined ? (product.isActive ? 1 : 0) : undefined,
+      });
     } catch (error) {
       await this.errorNotificationService.sendErrorEmail(
         `Error in update: ${error.message}`,
