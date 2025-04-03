@@ -2,8 +2,10 @@ import { Controller, Post, Body, Headers, UnauthorizedException } from '@nestjs/
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthService } from './auth.service';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { HeadersToDtoPipe } from '../pipes/headers-to-dto.pipe';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -12,6 +14,10 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiResponse({ status: 201, description: 'User successfully registered' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiBody({ type: RegisterDto })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(
       registerDto.email,
@@ -21,6 +27,10 @@ export class AuthController {
   }
 
   @Post('login')
+  @ApiOperation({ summary: 'User login' })
+  @ApiResponse({ status: 200, description: 'Successful login' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({ type: LoginDto })
   async login(@Headers() headers: Record<string, string>) { // Recibimos headers crudos
     // Aplicamos el pipe manualmente
     const loginDto = await this.headersToDtoPipe.transform(headers);
