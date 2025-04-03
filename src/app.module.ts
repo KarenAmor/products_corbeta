@@ -21,8 +21,8 @@ dotenv.config();
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: process.env.DB_SYNCHRONIZE === 'true',
     }),
-    ProductModule,
-    AuthModule
+    AuthModule,
+    ProductModule
   ],
   controllers: [AppController],
   providers: [AppService],

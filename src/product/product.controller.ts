@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   InternalServerErrorException,
+  UseGuards 
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -15,6 +16,7 @@ import { ErrorNotificationService } from './error-notification.service';
 import { Product } from './entities/product.entity';
 import { CreateProductDto } from '../product/dto/createProductDto';
 import { UpdateProductDto } from '../product/dto/updateProductDto';
+import { AuthGuard } from '../auth/auth.guard';
 
 @ApiTags('products')
 @Controller('products')
@@ -25,6 +27,7 @@ export class ProductController {
   ) { }
 
   @Get()
+  @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Get all products' })
   @ApiResponse({ status: 200, description: 'List of products', type: [Product] })
   async findAll(
@@ -42,6 +45,7 @@ export class ProductController {
   }
 
   @Get('search')
+  @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Search products by keyword' })
   @ApiResponse({ status: 200, description: 'Found products', type: [Product] })
   async search(@Query('keyword') keyword: string): Promise<Product[]> {
@@ -56,6 +60,7 @@ export class ProductController {
   }
 
   @Get(':reference')
+  @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Get product by reference' })
   @ApiResponse({ status: 200, description: 'Product found', type: Product })
   @ApiResponse({ status: 404, description: 'Product not found' })
@@ -71,6 +76,7 @@ export class ProductController {
   }
   
   @Post()
+  @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Create products in bulk' })
   @ApiResponse({ status: 201, description: 'Products created successfully', type: [Product] })
   async createBulk(@Body() productsData: CreateProductDto[], @Query('batchSize') batchSize = 100) {
@@ -109,6 +115,7 @@ export class ProductController {
   }
 
   @Put(':reference')
+  @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Update product' })
   @ApiResponse({ status: 200, description: 'Product updated', type: Product })
   async update(@Param('reference') reference: string, @Body() product: UpdateProductDto): Promise<Product> {
@@ -126,6 +133,7 @@ export class ProductController {
   }
 
   @Delete(':reference')
+  @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Delete product' })
   @ApiResponse({ status: 200, description: 'Product deleted successfully' })
   async remove(@Param('reference') reference: string): Promise<{ message: string }> {

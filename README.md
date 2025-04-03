@@ -1,6 +1,6 @@
 # Proyecto de Gestión de Productos
 
-Este es un proyecto backend desarrollado con **NestJS** que implementa un módulo de gestión de productos utilizando una base de datos **MySQL**, **TypeORM** como ORM, y **Nodemailer** para el envío de notificaciones por correo electrónico. Incluye un CRUD completo para productos con funcionalidades avanzadas como paginación, búsqueda, carga masiva y un sistema de logs para registrar cambios.
+Este es un proyecto backend desarrollado con **NestJS** que implementa un módulo de gestión de productos utilizando una base de datos **MySQL**, **TypeORM** como ORM, y **Nodemailer** para el envío de notificaciones por correo electrónico. Incluye un CRUD completo para productos con funcionalidades avanzadas como paginación, búsqueda, carga masiva y un sistema de logs para registrar cambios. Además, se ha implementado autenticación basada en encabezados para proteger los endpoints del sistema.
 
 ## Tecnologías utilizadas
 
@@ -9,8 +9,23 @@ Este es un proyecto backend desarrollado con **NestJS** que implementa un módul
 - **TypeORM**: ORM para interactuar con la base de datos.
 - **Nodemailer**: Servicio para enviar correos electrónicos con notificaciones de errores.
 - **Node.js**: Entorno de ejecución.
+- **Swagger**: Documentación interactiva de la API.
+- **Jest**: Framework para pruebas unitarias.
 
 ## Características
+
+### Módulo de Autenticación
+El sistema de autenticación se basa en el envío de credenciales a través de headers HTTP. No se utiliza JWT, sino que los endpoints protegidos requieren que el usuario envíe su correo electrónico y contraseña en los headers de la petición.
+
+Validación de credenciales:
+
+Los endpoints protegidos requieren los headers:
+- **email**: Correo electrónico del usuario.
+- **password**: Contraseña del usuario.
+
+Un AuthGuard verifica la autenticidad del usuario antes de procesar la petición.
+
+- En caso de credenciales inválidas o ausencia de las mismas, se devuelve un error 401 Unauthorized.
 
 ### Módulo de Productos
 El módulo de productos ofrece las siguientes funcionalidades:
@@ -30,6 +45,19 @@ El módulo de productos ofrece las siguientes funcionalidades:
 3. **Sistema de Logs**:
    - Registra automáticamente las operaciones en la tabla `products` (creación, modificación, eliminación).
    - Cada cambio genera un log con la información relevante (como la `reference`, el tipo de operación y los datos antes/después).
+
+4. **Pruebas Unitarias**:
+  Se han implementado pruebas unitarias con Jest para garantizar la calidad del código en los siguientes módulos:
+    - Autenticación: Se prueba la validación de credenciales y la respuesta del guardián de autenticación.
+    - Productos: Se validan las operaciones CRUD, así como las reglas de negocio y validaciones.
+
+5. **Documentación de la API**:
+  Se ha utilizado Swagger para generar la documentación interactiva de la API. Para acceder a la documentación, inicie el servidor y diríjase a:
+    ```bash
+    http://localhost:3000/api
+    ```
+
+Esta documentación detalla todos los endpoints disponibles, los formatos de peticiones y respuestas, así como ejemplos de uso.
 
 ## Requisitos previos
 
@@ -57,14 +85,14 @@ El módulo de productos ofrece las siguientes funcionalidades:
      cp .env.example .env
      ```
    - Edita `.env` con tus valores reales:
-```bash
-   DB_HOST=tu_host_de_base_de_datos
-   DB_PORT=puerto_de_base_de_datos
-   DB_USERNAME=tu_usuario_de_base_de_datos
-   DB_PASSWORD=tu_contraseña_de_base_de_datos
-   DB_NAME=nombre_de_tu_base_de_datos
-   DB_SYNCHRONIZE=true_o_false
-```
+    ```bash
+     DB_HOST=tu_host_de_base_de_datos
+     DB_PORT=puerto_de_base_de_datos
+     DB_USERNAME=tu_usuario_de_base_de_datos
+     DB_PASSWORD=tu_contraseña_de_base_de_datos
+     DB_NAME=nombre_de_tu_base_de_datos
+     DB_SYNCHRONIZE=true_o_false
+    ```
 
 4. **Inicializa la base de datos**:
    - Asegúrate de que MySQL esté corriendo.
@@ -72,9 +100,9 @@ El módulo de productos ofrece las siguientes funcionalidades:
    - TypeORM sincronizará las entidades automáticamente al iniciar la aplicación (si `synchronize: true` está configurado).
 
 5. **Inicia la aplicación**:
-   ```bash
-   npm run start:dev
-   ```
+    ```bash
+    npm run start:dev
+    ```
    - La API estará disponible en `http://localhost:3000` (o el puerto configurado).
 
 ## Uso
