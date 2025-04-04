@@ -1,5 +1,5 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, IsPositive, IsBoolean, MaxLength, IsDecimal } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsPositive, IsBoolean, MaxLength, IsIn } from 'class-validator';
 
 export class CreateProductDto {
   @ApiProperty({ description: 'Product reference', maxLength: 20 })
@@ -45,6 +45,18 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+    // 🔹 Nuevo campo: tipoEvento
+    @ApiProperty({ description: 'Event type (CREATE, UPDATE, DELETE)' })
+    @IsString()
+    @IsIn(['CREATE', 'UPDATE', 'DELETE'])
+    tipoEvento: 'CREATE' | 'UPDATE' | 'DELETE';
+  
+    // 🔹 Nuevo campo: procesado
+    @ApiProperty({ description: 'Processing status', default: false })
+    @IsBoolean()
+    @IsOptional()
+    procesado?: boolean;
 }
 
 export class UpdateProductDto extends PartialType(CreateProductDto) {}
