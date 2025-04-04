@@ -20,7 +20,7 @@ El sistema de autenticación se basa en el envío de credenciales a través de h
 Validación de credenciales:
 
 Los endpoints protegidos requieren los headers:
-- **email**: Correo electrónico del usuario.
+- **usuario**: Correo electrónico del usuario.
 - **password**: Contraseña del usuario.
 
 Un AuthGuard verifica la autenticidad del usuario antes de procesar la petición.

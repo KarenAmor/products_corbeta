@@ -31,24 +31,24 @@ describe('AuthService', () => {
 
   it('should hash the password when registering', async () => {
     const mockUser = {
-      email: 'test@example.com',
+      usuario: 'test@example.com',
       password: '123456',
     };
     
     jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashedPassword');
     
-    const result = await service.register(mockUser.email, mockUser.password);
+    const result = await service.register(mockUser.usuario, mockUser.password);
     
     expect(bcrypt.hash).toHaveBeenCalledWith(mockUser.password, 10);
     expect(mockUserRepository.create).toHaveBeenCalledWith({
-      email: mockUser.email,
+      usuario: mockUser.usuario,
       password: 'hashedPassword', // Aseguramos que se hashee
       role: 'user', // Valor por defecto
     });
     expect(mockUserRepository.save).toHaveBeenCalled();
     expect(result).toEqual({
       id: 1,
-      email: mockUser.email,
+      usuario: mockUser.usuario,
       password: 'hashedPassword',
       role: 'user',
     });

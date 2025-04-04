@@ -11,18 +11,18 @@ export class AuthService {
     private userRepository: Repository<User>,
   ) {}
 
-  async register(email: string, password: string, role?: string): Promise<User> {
+  async register(usuario: string, password: string, role?: string): Promise<User> {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = this.userRepository.create({
-      email,
+      usuario,
       password: hashedPassword,
       role: role || 'user',
     });
     return this.userRepository.save(user);
   }
 
-  async validateUser(email: string, password: string): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { email } });
+  async validateUser(usuario: string, password: string): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { usuario } });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const isPasswordValid = await bcrypt.compare(password, user.password);

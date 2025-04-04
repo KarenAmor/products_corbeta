@@ -9,7 +9,7 @@ export class User {
 
   @Column({ unique: true })
   @ApiProperty({ description: 'User email', uniqueItems: true, example: 'user@example.com' })
-  email: string;
+  usuario: string;
 
   @Column()
   @ApiProperty({ description: 'User password', writeOnly: true, example: 'strongPassword123' })

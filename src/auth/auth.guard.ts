@@ -10,15 +10,15 @@ export class AuthGuard implements CanActivate {
     const headers = request.headers;
   
     
-    const email = headers['email'];  
+    const usuario = headers['usuario'];  
     const password = headers['password'];
   
-    if (!email || !password) {
+    if (!usuario || !password) {
       throw new UnauthorizedException('Missing authentication headers');
     }
   
     // Validar credenciales
-    const isValidUser = await this.authService.validateUser(email, password);
+    const isValidUser = await this.authService.validateUser(usuario, password);
     if (!isValidUser) {
       throw new UnauthorizedException('Invalid credentials');
     }

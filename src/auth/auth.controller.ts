@@ -20,7 +20,7 @@ export class AuthController {
   @ApiBody({ type: RegisterDto })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(
-      registerDto.email,
+      registerDto.usuario,
       registerDto.password,
       registerDto.role,
     );
@@ -36,10 +36,10 @@ export class AuthController {
     const loginDto = await this.headersToDtoPipe.transform(headers);
     
     // Validación adicional (opcional)
-    if (!loginDto.email || !loginDto.password) {
+    if (!loginDto.usuario || !loginDto.password) {
       throw new UnauthorizedException('Credentials required in headers');
     }
     
-    return this.authService.validateUser(loginDto.email, loginDto.password);
+    return this.authService.validateUser(loginDto.usuario, loginDto.password);
   }
 }
