@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { ErrorNotificationService } from './error-notification.service';
+import { ErrorNotificationService } from '../utils/error-notification.service';
 import { Product } from './entities/product.entity';
 import { CreateProductDto } from '../product/dto/createProductDto';
 import { UpdateProductDto } from '../product/dto/updateProductDto';
