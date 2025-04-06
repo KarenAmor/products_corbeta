@@ -1,15 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { instanceToPlain } from 'class-transformer';
 import { Product } from './entities/product.entity';
+import { LogsService } from '../logs/logs.service';
 
 @Injectable()
 export class ProductService {
   constructor(
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
-  ) {} // Se eliminó ProductLogsService
+    private readonly logsService: LogsService, // 👈 Inyectamos el LogsService
+  ) {}
 
   async createBulk(
     productsData: Partial<Product>[],
@@ -46,29 +47,57 @@ export class ProductService {
             const existingProduct = await this.productRepository.findOne({
               where: { reference: productData.reference },
             });
+
             if (existingProduct) {
-              const oldData = JSON.parse(JSON.stringify(existingProduct));
               Object.assign(existingProduct, productData, { procesado: false });
               const updatedProduct = await transactionalEntityManager.save(existingProduct);
-              
-              // Se eliminó la llamada a createLog
+
               result.products.push(updatedProduct);
+
+              // Log de actualización
+              this.logsService.log({
+                tipoSync: 'producto',
+                idRegistro: updatedProduct.reference.toString(),
+                tabla: 'product',
+                tipoEvento: 'ACTUALIZACION',
+                resultado: 'exitoso',
+              });
             } else {
               productData.procesado = false;
               const newProduct = this.productRepository.create(productData);
               const createdProduct = await transactionalEntityManager.save(newProduct);
-              
-              // Se eliminó la llamada a createLog
+
               result.products.push(createdProduct);
+
+              // Log de creación
+              this.logsService.log({
+                tipoSync: 'producto',
+                idRegistro: createdProduct.reference.toString(),
+                tabla: 'product',
+                tipoEvento: 'CREACION',
+                resultado: 'exitoso',
+              });
             }
+
             result.count += 1;
           } catch (error) {
             batchErrors.push({
               product: productData,
               error: error.message,
             });
+
+            // Log de error
+            this.logsService.log({
+              tipoSync: 'producto',
+              idRegistro: productData.reference ?? 'N/A',
+              tabla: 'product',
+              tipoEvento: productData.tipoEvento ?? 'DESCONOCIDO',
+              resultado: 'fallido',
+              mensajeError: error.message,
+            });
           }
         }
+
         result.errors.push(...batchErrors);
       }
     });
