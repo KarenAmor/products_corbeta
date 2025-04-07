@@ -17,11 +17,11 @@ export class Product {
 
   @Column({ type: 'decimal', precision: 15, scale: 8, nullable: true })
   @ApiProperty({ description: 'Conversion rate', required: false })
-  convertionRate?: number;
+  convertion_rate?: number;
 
   @Column({ type: 'char', length: 10, nullable: true })
   @ApiProperty({ description: 'VAT group', required: false })
-  vatGroup?: string;
+  vat_group?: string;
 
   @Column({ type: 'decimal', precision: 4, scale: 2, unsigned: true, default: 0.00 })
   @ApiProperty({ description: 'VAT rate', default: 0.00 })
@@ -29,11 +29,11 @@ export class Product {
 
   @Column({ type: 'char', length: 3, nullable: true })
   @ApiProperty({ description: 'Destination packing unit', required: false })
-  packingTo?: string;
+  packing_to?: string;
 
   @Column({ type: 'tinyint', width: 4, unsigned: true, default: 1 })
   @ApiProperty({ description: 'Is active?', default: 1 })
-  isActive: number;
+  is_active: number;
 
   @CreateDateColumn({ type: 'timestamp', precision: 6, default: () => 'CURRENT_TIMESTAMP(6)' })
   @ApiProperty({ description: 'Creation date', type: 'string', format: 'date-time' })
@@ -44,12 +44,11 @@ export class Product {
   modified: Date;
 
   // 🔹 Nuevo campo: tipoEvento
-  @Column({ type: 'enum', enum: ['CREATE', 'UPDATE', 'DELETE'], nullable: false })
+  @Column({ type: 'enum', enum: ['CREATE', 'UPDATE', 'DELETE'], nullable: false, name: 'event_type' })
   @ApiProperty({ description: 'Event type (CREATE, UPDATE, DELETE)' })
-  tipoEvento: 'CREATE' | 'UPDATE' | 'DELETE';
+  event_type: 'CREATE' | 'UPDATE' | 'DELETE';
 
-  // 🔹 Nuevo campo: procesado
   @Column({ type: 'boolean', default: false })
   @ApiProperty({ description: 'Processing status', default: false })
-  procesado: boolean;
+  processed: boolean;
 }

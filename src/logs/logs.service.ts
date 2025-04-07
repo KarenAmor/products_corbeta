@@ -4,12 +4,12 @@ import { Logger } from 'winston';
 import { createWinstonLogger } from './winston.config';
 
 interface LogPayload {
-  tipoSync: string;
-  idRegistro: string;
-  tabla: string;
-  tipoEvento: string;
-  resultado: string;
-  mensajeError?: string;
+  sync_type: string;
+  record_id: string;
+  table_name: string;
+  event_type: string;
+  result: string;
+  error_message?: string;
 }
 
 @Injectable()
@@ -24,9 +24,9 @@ export class LogsService implements OnModuleInit {
 
   log(payload: LogPayload) {
     this.logger.info({
-      message: `[LOG] ${payload.tipoSync} - ${payload.tabla} - ${payload.tipoEvento}`,
+      message: `[LOG] ${payload.sync_type} - ${payload.table_name} - ${payload.event_type}`,
       ...payload,
-      fecha: new Date(),
+      event_date: new Date(),
     });
   }  
 }

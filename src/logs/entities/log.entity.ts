@@ -1,28 +1,28 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-@Entity('log_sincronizacion')
+@Entity('sync_log')
 export class LogEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
-  tipoSync: string; // API o Sincronización
+  sync_type: string;
 
   @Column()
-  idRegistro: string; // ID del registro afectado
+  record_id: string;
 
   @Column()
-  tabla: string; // Tabla sincronizada
+  table_name: string;
 
   @Column()
-  tipoEvento: string; // Nuevo, Actualizar, Eliminar
+  event_type: string;
 
   @Column()
-  fecha: Date; // Fecha Evento
+  event_date: Date;
 
   @Column()
-  resultado: string; // Exitoso, Fallido
+  result: string;
 
   @Column({ nullable: true })
-  mensajeError?: string; // Mensaje Error
+  error_message?: string;
 }

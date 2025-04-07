@@ -11,14 +11,14 @@ describe('HeadersToDtoPipe', () => {
 
   it('should transform headers to LoginDto', async () => {
     const headers = {
-      usuario: 'test@example.com',
+      user: 'test@example.com',
       password: '123456',
     };
 
     const result = await pipe.transform(headers);
 
     expect(result).toBeInstanceOf(LoginDto);
-    expect(result.usuario).toBe(headers.usuario);
+    expect(result.user).toBe(headers.user);
     expect(result.password).toBe(headers.password);
   });
 

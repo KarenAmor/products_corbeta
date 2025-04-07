@@ -22,13 +22,13 @@ export class CreateProductDto {
   @IsOptional()
   @IsNumber()
   @IsPositive()
-  convertionRate?: number;
+  convertion_rate?: number;
 
   @ApiProperty({ description: 'VAT group', required: false, maxLength: 10 })
   @IsOptional()
   @IsString()
   @MaxLength(10)
-  vatGroup?: string;
+  vat_group?: string;
 
   @ApiProperty({ description: 'VAT rate', default: 0.00 })
   @IsNumber()
@@ -39,24 +39,22 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   @MaxLength(3)
-  packingTo?: string;
+  packing_to?: string;
 
   @ApiProperty({ description: 'Is active?', default: 1 })
   @IsOptional()
   @IsBoolean()
-  isActive?: boolean;
+  is_active?: boolean;
 
-    // 🔹 Nuevo campo: tipoEvento
-    @ApiProperty({ description: 'Event type (CREATE, UPDATE, DELETE)' })
-    @IsString()
-    @IsIn(['CREATE', 'UPDATE', 'DELETE'])
-    tipoEvento: 'CREATE' | 'UPDATE' | 'DELETE';
-  
-    // 🔹 Nuevo campo: procesado
-    @ApiProperty({ description: 'Processing status', default: false })
-    @IsBoolean()
-    @IsOptional()
-    procesado?: boolean;
+  // 🔹 Nuevo campo: tipoEvento
+  @ApiProperty({ description: 'Event type (CREATE, UPDATE, DELETE)' })
+  @IsString()
+  @IsIn(['CREATE', 'UPDATE', 'DELETE'])
+  event_type: 'CREATE' | 'UPDATE' | 'DELETE';
+
+  // 🔹 Nuevo campo: procesado
+  @ApiProperty({ description: 'Processing status', default: false })
+  @IsBoolean()
+  @IsOptional()
+  processed?: boolean;
 }
-
-export class UpdateProductDto extends PartialType(CreateProductDto) {}

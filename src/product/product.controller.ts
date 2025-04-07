@@ -15,7 +15,6 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ErrorNotificationService } from '../utils/error-notification.service';
 import { Product } from './entities/product.entity';
 import { CreateProductDto } from '../product/dto/createProductDto';
-import { UpdateProductDto } from '../product/dto/updateProductDto';
 import { AuthGuard } from '../auth/auth.guard';
 
 @ApiTags('products')
@@ -39,7 +38,7 @@ export class ProductController {
       const result = await this.productService.createBulk(
         productsData.map(product => ({
           ...product,
-          isActive: product.isActive ? 1 : 0, // Conversión de boolean a number
+          is_active: product.is_active ? 1 : 0, // Conversión de boolean a number
         })),
         Number(batchSize),
       );

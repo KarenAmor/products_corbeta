@@ -2,13 +2,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductService } from './product.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
+import { LogsService } from '../logs/logs.service';
 
 describe('ProductService', () => {
   let service: ProductService;
   let productRepository: any;
+  let logsServiceMock: any;
 
   beforeEach(async () => {
-    // Mock repository
+    // Mock del repositorio de productos
     productRepository = {
       findAndCount: jest.fn(),
       find: jest.fn(),
@@ -23,10 +25,16 @@ describe('ProductService', () => {
       },
     };
 
+    // Mock del LogsService
+    logsServiceMock = {
+      log: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductService,
         { provide: getRepositoryToken(Product), useValue: productRepository },
+        { provide: LogsService, useValue: logsServiceMock },
       ],
     }).compile();
 
@@ -40,11 +48,11 @@ describe('ProductService', () => {
       );
     });
 
-    it('should create products in bulk without logging', async () => {
+    it('should create products in bulk without logging errors', async () => {
       const productsData: Partial<Product>[] = [
-        { reference: 'ref1', name: 'Product 1', tipoEvento: 'CREATE' },
-        { reference: 'ref2', name: 'Product 2', tipoEvento: 'UPDATE' },
-        { reference: 'ref3', name: 'Product 3', tipoEvento: 'UPDATE' },
+        { reference: 'ref1', name: 'Product 1', event_type: 'CREATE' },
+        { reference: 'ref2', name: 'Product 2', event_type: 'UPDATE' },
+        { reference: 'ref3', name: 'Product 3', event_type: 'UPDATE' },
       ];
 
       productRepository.create.mockImplementation((data) => data);
@@ -58,14 +66,13 @@ describe('ProductService', () => {
       expect(result.count).toBe(3);
       expect(result.products.length).toBe(3);
       expect(result.errors.length).toBe(0);
-      // Removed log verification
     });
 
     it('should capture errors for invalid products', async () => {
       const productsData: Partial<Product>[] = [
-        { reference: 'ref1', name: 'Product 1', tipoEvento: 'CREATE' },          // valid
-        { reference: 'ref1', name: 'Duplicate Product', tipoEvento: 'CREATE' }, // duplicate
-        { reference: 'ref3', tipoEvento: 'CREATE' },                             // missing name
+        { reference: 'ref1', name: 'Product 1', event_type: 'CREATE' },           // válido
+        { reference: 'ref1', name: 'Duplicado', event_type: 'CREATE' },           // duplicado
+        { reference: 'ref3', event_type: 'CREATE' },                               // falta nombre
       ];
 
       productRepository.create.mockImplementation((data) => data);
@@ -79,6 +86,7 @@ describe('ProductService', () => {
       expect(result.count).toBe(1);
       expect(result.products.length).toBe(1);
       expect(result.errors.length).toBe(2);
+      expect(logsServiceMock.log).toHaveBeenCalled(); // Confirma que se llamó al log
     });
   });
 });

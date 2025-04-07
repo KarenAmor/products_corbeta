@@ -7,7 +7,7 @@ import { LoginDto } from '../auth/dto/login.dto';
 export class HeadersToDtoPipe implements PipeTransform {
   async transform(headers: any): Promise<LoginDto>  {
     const loginDto = plainToClass(LoginDto, {
-      usuario: headers.usuario,
+      user: headers.user,
       password: headers.password,
     });
     

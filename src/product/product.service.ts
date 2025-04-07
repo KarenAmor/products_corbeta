@@ -35,7 +35,7 @@ export class ProductService {
 
         for (const productData of batch) {
           try {
-            if (!productData.reference || !productData.name || !productData.tipoEvento) {
+            if (!productData.reference || !productData.name || !productData.event_type) {
               throw new Error('Reference, name and tipoEvento are required');
             }
 
@@ -56,14 +56,14 @@ export class ProductService {
 
               // Log de actualización
               this.logsService.log({
-                tipoSync: 'producto',
-                idRegistro: updatedProduct.reference.toString(),
-                tabla: 'product',
-                tipoEvento: 'ACTUALIZACION',
-                resultado: 'exitoso',
+                sync_type: 'producto',
+                record_id: updatedProduct.reference.toString(),
+                table_name: 'product',
+                event_type: 'UPDATE',
+                result: 'exitoso',
               });
             } else {
-              productData.procesado = false;
+              productData.processed = false;
               const newProduct = this.productRepository.create(productData);
               const createdProduct = await transactionalEntityManager.save(newProduct);
 
@@ -71,11 +71,11 @@ export class ProductService {
 
               // Log de creación
               this.logsService.log({
-                tipoSync: 'producto',
-                idRegistro: createdProduct.reference.toString(),
-                tabla: 'product',
-                tipoEvento: 'CREACION',
-                resultado: 'exitoso',
+                sync_type: 'producto',
+                record_id: createdProduct.reference.toString(),
+                table_name: 'product',
+                event_type: 'NEW',
+                result: 'exitoso',
               });
             }
 
@@ -88,12 +88,12 @@ export class ProductService {
 
             // Log de error
             this.logsService.log({
-              tipoSync: 'producto',
-              idRegistro: productData.reference ?? 'N/A',
-              tabla: 'product',
-              tipoEvento: productData.tipoEvento ?? 'DESCONOCIDO',
-              resultado: 'fallido',
-              mensajeError: error.message,
+              sync_type: 'producto',
+              record_id: productData.reference ?? 'N/A',
+              table_name: 'product',
+              event_type: 'ERROR',
+              result: 'fallido',
+              error_message: error.message,
             });
           }
         }

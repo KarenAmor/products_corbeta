@@ -11,7 +11,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly headersToDtoPipe: HeadersToDtoPipe // Inyectamos el pipe
-  ) {}
+  ) { }
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
@@ -20,7 +20,7 @@ export class AuthController {
   @ApiBody({ type: RegisterDto })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(
-      registerDto.usuario,
+      registerDto.user,
       registerDto.password,
       registerDto.role,
     );
@@ -31,15 +31,13 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Successful login' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiBody({ type: LoginDto })
-  async login(@Headers() headers: Record<string, string>) { // Recibimos headers crudos
-    // Aplicamos el pipe manualmente
+  async login(@Headers() headers: Record<string, string>) {
     const loginDto = await this.headersToDtoPipe.transform(headers);
-    
-    // Validación adicional (opcional)
-    if (!loginDto.usuario || !loginDto.password) {
+
+    if (!loginDto.user || !loginDto.password) {
       throw new UnauthorizedException('Credentials required in headers');
     }
-    
-    return this.authService.validateUser(loginDto.usuario, loginDto.password);
+
+    return this.authService.validateUser(loginDto.user, loginDto.password);
   }
 }

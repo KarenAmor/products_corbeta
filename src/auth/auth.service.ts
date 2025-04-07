@@ -11,28 +11,27 @@ export class AuthService {
     private userRepository: Repository<User>,
   ) {}
 
-  async register(usuario: string, password: string, role?: string): Promise<User> {
+  async register(user: string, password: string, role?: string): Promise<User> {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = this.userRepository.create({
-      usuario,
+    const newUser = this.userRepository.create({
+      user, 
       password: hashedPassword,
       role: role || 'user',
     });
-    return this.userRepository.save(user);
+    return this.userRepository.save(newUser);
   }
 
-  async validateUser(usuario: string, password: string): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { usuario } });
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+  async validateUser(user: string, password: string): Promise<User> {
+    const foundUser = await this.userRepository.findOne({ where: { user } });
+    if (!foundUser) throw new UnauthorizedException('Invalid credentials');
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, foundUser.password);
     if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
 
-    // Actualizar conteo de logins y última fecha de login
-    user.loginCount += 1;
-    user.lastLoginAt = new Date();
-    await this.userRepository.save(user);
+    foundUser.loginCount += 1;
+    foundUser.lastLoginAt = new Date();
+    await this.userRepository.save(foundUser);
 
-    return user;
+    return foundUser;
   }
 }

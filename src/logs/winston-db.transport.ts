@@ -17,28 +17,36 @@ export class WinstonDbTransport extends Transport {
   async log(info: any, callback: () => void) {
     setImmediate(() => this.emit('logged', info));
 
-    const { tipoSync, idRegistro, tabla, tipoEvento, fecha, resultado, mensajeError } = info;
+    const {
+      sync_type,
+      record_id,
+      table_name,
+      event_type,
+      event_date,
+      result,
+      error_message,
+    } = info;
 
     try {
-      const repo = this.dataSource.getRepository(LogEntity);
-      const log = repo.create({
-        tipoSync,
-        idRegistro,
-        tabla,
-        tipoEvento,
-        fecha: fecha || new Date(),
-        resultado,
-        mensajeError,
-      });
-      
-      if (!tipoSync || !idRegistro || !tabla || !tipoEvento || !resultado) {
-        console.warn('Log incompleto, no se guardará en la base de datos:', info);
+      if (!sync_type || !record_id || !table_name || !event_type || !result) {
+        console.warn('Incomplete log, not saving to database:', info);
         return callback();
       }
-      
+
+      const repo = this.dataSource.getRepository(LogEntity);
+      const log = repo.create({
+        sync_type,
+        record_id,
+        table_name,
+        event_type,
+        event_date: event_date || new Date(),
+        result,
+        error_message,
+      });
+
       await repo.save(log);
     } catch (error) {
-      console.error('Error al guardar el log en la base de datos:', error);
+      console.error('Failed to save log to database:', error);
     }
 
     callback();

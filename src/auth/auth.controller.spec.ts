@@ -42,46 +42,43 @@ describe('AuthController', () => {
   describe('register', () => {
     it('should register a user successfully', async () => {
       const registerDto: RegisterDto = {
-        usuario: 'test@example.com',
+        user: 'test@example.com',
         password: '123456',
         role: 'user',
       };
 
       const mockUser = {
         id: 1,
-        usuario: registerDto.usuario,
+        user: registerDto.user,
         password: 'hashedPassword',
-        role: registerDto.role, // Contraseña hasheada
+        role: registerDto.role, 
         loginCount: 0,
         createdAt: new Date(),
         lastLoginAt: null,
       };
 
-      // Mockeamos el método register del servicio
       (authService.register as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await controller.register(registerDto);
 
-      // Verificamos que se llamó al servicio con los parámetros correctos
       expect(authService.register).toHaveBeenCalledWith(
-        registerDto.usuario,
+        registerDto.user,
         registerDto.password,
         registerDto.role,
       );
       
-      // Verificamos que el resultado es el esperado
       expect(result).toEqual(mockUser);
     });
 
     it('should register a user with default role if not specified', async () => {
       const registerDto: RegisterDto = {
-        usuario: 'test@example.com',
+        user: 'test@example.com',
         password: '123456',
       };
 
       const mockUser = {
         id: 1,
-        usuario: registerDto.usuario,
+        user: registerDto.user,
         password: 'hashedPassword',
         role: 'user', // Rol por defecto
         loginCount: 0,
@@ -94,7 +91,7 @@ describe('AuthController', () => {
       const result = await controller.register(registerDto);
 
       expect(authService.register).toHaveBeenCalledWith(
-        registerDto.usuario,
+        registerDto.user,
         registerDto.password,
         undefined, // No se envía rol
       );
@@ -105,18 +102,18 @@ describe('AuthController', () => {
 describe('login', () => {
   it('should log in a user with valid headers', async () => {
     const mockHeaders = {
-      usuario: 'test@example.com',
+      user: 'test@example.com',
       password: '123456',
     };
 
     const loginDto: LoginDto = {
-      usuario: mockHeaders.usuario,
+      user: mockHeaders.user,
       password: mockHeaders.password,
     };
 
     const mockUser = {
       id: 1,
-      usuario: loginDto.usuario,
+      user: loginDto.user,
       password: 'hashedPassword', // Añadir password hasheado
       role: 'user',
       loginCount: 1,
@@ -131,7 +128,7 @@ describe('login', () => {
 
     expect(headersToDtoPipe.transform).toHaveBeenCalledWith(mockHeaders);
     expect(authService.validateUser).toHaveBeenCalledWith(
-      loginDto.usuario,
+      loginDto.user,
       loginDto.password,
     );
     expect(result).toEqual(mockUser);

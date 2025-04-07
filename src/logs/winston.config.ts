@@ -1,5 +1,5 @@
 import * as winston from 'winston';
-import { WinstonDbTransport } from './winston-db.transport'; // asegúrate que el nombre y la ruta son correctos
+import { WinstonDbTransport } from './winston-db.transport';
 import { DataSource } from 'typeorm';
 
 export const createWinstonLogger = (dataSource: DataSource): winston.Logger => {
