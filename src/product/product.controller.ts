@@ -14,7 +14,7 @@ import { ProductService } from './product.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ErrorNotificationService } from '../utils/error-notification.service';
 import { Product } from './entities/product.entity';
-import { CreateProductDto } from '../product/dto/createProductDto';
+import { CreateProductDto } from './dto/create-product-dto';
 import { AuthGuard } from '../auth/auth.guard';
 
 @ApiTags('products')

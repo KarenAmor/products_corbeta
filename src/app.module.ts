@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProductModule } from './product/product.module';
 import { AuthModule } from './auth/auth.module';
+import { ProductStocksModule } from './product-stocks/product-stocks.module';
 
 // Cargar variables de entorno al inicio
 dotenv.config();
@@ -22,7 +23,8 @@ dotenv.config();
       synchronize: process.env.DB_SYNCHRONIZE === 'true',
     }),
     AuthModule,
-    ProductModule
+    ProductModule,
+    ProductStocksModule
   ],
   controllers: [AppController],
   providers: [AppService],
