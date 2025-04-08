@@ -1,30 +1,35 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import * as dotenv from 'dotenv';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProductModule } from './product/product.module';
-import { AuthModule } from './auth/auth.module';
-import { ProductStocksModule } from './product-stocks/product-stocks.module';
-
-// Cargar variables de entorno al inicio
-dotenv.config();
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: process.env.DB_HOST ?? 'localhost',
-      port: parseInt(process.env.DB_PORT ?? '3306', 10),
-      username: process.env.DB_USERNAME ?? 'root',
-      password: process.env.DB_PASSWORD ?? '',
-      database: process.env.DB_NAME ?? 'test',
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: process.env.DB_SYNCHRONIZE === 'true',
+    // ConfigModule para manejar variables de entorno
+    ConfigModule.forRoot({
+      isGlobal: true, // Hace que ConfigModule esté disponible globalmente
+      envFilePath: '.env', // Especifica el archivo .env
     }),
-    AuthModule,
+    
+    // Configuración de TypeORM usando ConfigService
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'mysql' as const,
+        host: configService.get<string>('DB_HOST', 'localhost'),
+        port: configService.get<number>('DB_PORT', 3306),
+        username: configService.get<string>('DB_USERNAME', 'root'),
+        password: configService.get<string>('DB_PASSWORD', ''),
+        database: configService.get<string>('DB_NAME', 'test'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: configService.get<boolean>('DB_SYNCHRONIZE', false),
+      }),
+      inject: [ConfigService],
+    }),
+    
     ProductModule,
-    ProductStocksModule
   ],
   controllers: [AppController],
   providers: [AppService],

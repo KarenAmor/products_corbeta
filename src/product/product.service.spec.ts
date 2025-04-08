@@ -10,14 +10,10 @@ describe('ProductService', () => {
   let logsServiceMock: any;
 
   beforeEach(async () => {
-    // Mock del repositorio de productos
     productRepository = {
-      findAndCount: jest.fn(),
-      find: jest.fn(),
       findOne: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
-      remove: jest.fn(),
       manager: {
         transaction: jest.fn(async (cb: (repo: any) => Promise<void>) => {
           await cb(productRepository);
@@ -25,7 +21,6 @@ describe('ProductService', () => {
       },
     };
 
-    // Mock del LogsService
     logsServiceMock = {
       log: jest.fn(),
     };
@@ -48,45 +43,146 @@ describe('ProductService', () => {
       );
     });
 
-    it('should create products in bulk without logging errors', async () => {
+    it('should create products in bulk successfully', async () => {
       const productsData: Partial<Product>[] = [
-        { reference: 'ref1', name: 'Product 1', event_type: 'CREATE' },
-        { reference: 'ref2', name: 'Product 2', event_type: 'UPDATE' },
-        { reference: 'ref3', name: 'Product 3', event_type: 'UPDATE' },
+        {
+          reference: 'ref1',
+          name: 'Product 1',
+          packing: 'UNI',
+          convertion_rate: 1,
+          vat_group: 'Group A',
+          vat: 0.1,
+          packing_to: 'CAJ',
+          is_active: 1,
+        },
+        {
+          reference: 'ref2',
+          name: 'Product 2',
+          packing: 'CAJ',
+          convertion_rate: 2,
+          vat_group: 'Group B',
+          vat: 0.2,
+          packing_to: 'PAL',
+          is_active: 0,
+        },
       ];
 
       productRepository.create.mockImplementation((data) => data);
       productRepository.save.mockImplementation((data) =>
-        Promise.resolve({ id: Math.floor(Math.random() * 1000), ...data }),
+        Promise.resolve({ ...data, modified: new Date() }),
       );
       productRepository.findOne.mockResolvedValue(undefined);
 
       const result = await service.createBulk(productsData, 1);
 
-      expect(result.count).toBe(3);
-      expect(result.products.length).toBe(3);
+      expect(result.response.code).toBe(200);
+      expect(result.response.message).toBe('Transacción Exitosa');
+      expect(result.response.status).toBe('Exitoso');
       expect(result.errors.length).toBe(0);
+      expect(productRepository.save).toHaveBeenCalledTimes(2);
+      expect(logsServiceMock.log).toHaveBeenCalledTimes(2);
     });
 
     it('should capture errors for invalid products', async () => {
       const productsData: Partial<Product>[] = [
-        { reference: 'ref1', name: 'Product 1', event_type: 'CREATE' },           // válido
-        { reference: 'ref1', name: 'Duplicado', event_type: 'CREATE' },           // duplicado
-        { reference: 'ref3', event_type: 'CREATE' },                               // falta nombre
+        {
+          reference: 'ref1',
+          name: 'Product 1',
+          packing: 'UNI',
+          convertion_rate: 1,
+          vat_group: 'Group A',
+          vat: 0.1,
+          packing_to: 'CAJ',
+          is_active: 1,
+        }, // Válido
+        {
+          reference: 'ref1',
+          name: 'Duplicado',
+          packing: 'CAJ',
+          convertion_rate: 2,
+          vat_group: 'Group B',
+          vat: 0.2,
+          packing_to: 'PAL',
+          is_active: 0,
+        }, // Duplicado
+        {
+          reference: 'ref3',
+          packing: 'PAL',
+          convertion_rate: 3,
+          vat_group: 'Group C',
+          vat: 0.3,
+          packing_to: 'UNI',
+          is_active: 1,
+        }, // Falta name
+        {
+          reference: 'ref4',
+          name: 'Product 4',
+          packing: 'UNI',
+          convertion_rate: 'invalid' as any, // Tipo incorrecto
+          vat_group: 'Group D',
+          vat: 0.4,
+          packing_to: 'CAJ',
+          is_active: 1,
+        }, // Tipo incorrecto en convertion_rate
       ];
 
       productRepository.create.mockImplementation((data) => data);
       productRepository.save.mockImplementation((data) =>
-        Promise.resolve({ id: Math.floor(Math.random() * 1000), ...data }),
+        Promise.resolve({ ...data, modified: new Date() }),
       );
       productRepository.findOne.mockResolvedValue(undefined);
 
       const result = await service.createBulk(productsData, 2);
 
-      expect(result.count).toBe(1);
-      expect(result.products.length).toBe(1);
-      expect(result.errors.length).toBe(2);
-      expect(logsServiceMock.log).toHaveBeenCalled(); // Confirma que se llamó al log
+      expect(result.response.code).toBe(200);
+      expect(result.response.message).toBe('Transacción Exitosa');
+      expect(result.response.status).toBe('Fallido');
+      expect(result.errors.length).toBe(3);
+      expect(result.errors[0].error).toBe("Duplicate reference 'ref1' in the batch"); // Mensaje corregido
+      expect(result.errors[1].error).toBe('Missing required fields: name');
+      expect(result.errors[2].error).toContain('Invalid type for convertion_rate');
+      expect(logsServiceMock.log).toHaveBeenCalledTimes(4); // 1 éxito + 3 fallos
+    });
+
+    it('should update existing product', async () => {
+      const productsData: Partial<Product>[] = [
+        {
+          reference: 'ref1',
+          name: 'Updated Product',
+          packing: 'UNI',
+          convertion_rate: 1,
+          vat_group: 'Group A',
+          vat: 0.1,
+          packing_to: 'CAJ',
+          is_active: 1,
+        },
+      ];
+
+      const existingProduct = {
+        reference: 'ref1',
+        name: 'Original Product',
+        packing: 'CAJ',
+        convertion_rate: 2,
+        vat_group: 'Group B',
+        vat: 0.2,
+        packing_to: 'PAL',
+        is_active: 0,
+      };
+
+      productRepository.findOne.mockResolvedValue(existingProduct);
+      productRepository.save.mockImplementation((data) =>
+        Promise.resolve({ ...data, modified: new Date() }),
+      );
+
+      const result = await service.createBulk(productsData, 1);
+
+      expect(result.response.code).toBe(200);
+      expect(result.response.status).toBe('Exitoso');
+      expect(result.errors.length).toBe(0);
+      expect(productRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Updated Product' }),
+      );
+      expect(logsServiceMock.log).toHaveBeenCalledTimes(1);
     });
   });
 });

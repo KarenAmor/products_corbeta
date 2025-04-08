@@ -1,49 +1,72 @@
 import {
   Controller,
-  Get,
   Post,
   Body,
-  Param,
-  Put,
-  Delete,
   Query,
   InternalServerErrorException,
-  UseGuards 
+  Headers,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ErrorNotificationService } from '../utils/error-notification.service';
 import { Product } from './entities/product.entity';
 import { CreateProductDto } from './dto/create-product-dto';
-import { AuthGuard } from '../auth/auth.guard';
+import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
 
 @ApiTags('products')
 @Controller('products')
 export class ProductController {
+  private readonly authUser: string;
+  private readonly authPasswordHash: string;
+
   constructor(
     private readonly productService: ProductService,
     private readonly errorNotificationService: ErrorNotificationService,
-  ) { }
+    private readonly configService: ConfigService,
+  ) {
+    const user = this.configService.get<string>('AUTH_USER');
+    const passwordHash = this.configService.get<string>('AUTH_PASSWORD_HASH');
 
+    if (!user || !passwordHash) {
+      throw new Error('Missing required authentication environment variables');
+    }
+
+    this.authUser = user;
+    this.authPasswordHash = passwordHash;
+  }
+
+  private verifyCredentials(username: string, password: string): boolean {
+    return username === this.authUser && bcrypt.compareSync(password, this.authPasswordHash);
+  }
 
   @Post()
-  @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Create products in bulk' })
   @ApiResponse({ status: 201, description: 'Products created successfully', type: [Product] })
   async createBulk(
     @Body() productsData: CreateProductDto[],
     @Query('batchSize') batchSize = 100,
+    @Headers('x-auth-username') username: string,
+    @Headers('x-auth-password') password: string,
   ) {
+    if (!username || !password) {
+      throw new UnauthorizedException('Missing authentication headers');
+    }
+
+    if (!this.verifyCredentials(username, password)) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
     try {
       const result = await this.productService.createBulk(
         productsData.map(product => ({
           ...product,
-          is_active: product.is_active ? 1 : 0, // Conversión de boolean a number
+          is_active: product.is_active ? 1 : 0,
         })),
         Number(batchSize),
       );
-      
-      // Si hay errores, se envía un correo con los detalles
+
       if (result.errors.length > 0) {
         const errorDetails = result.errors.map(err => {
           if (err.product) {
@@ -53,18 +76,25 @@ export class ProductController {
           }
           return `Unknown error: ${err}`;
         }).join('\n');
-  
+
         await this.errorNotificationService.sendErrorEmail(
           `Errors creating products in bulk:\n${errorDetails}`
         );
       }
-  
-      return result;
+
+      return {
+        respuesta: {
+          codigoMensaje: result.response.code,
+          mensaje: result.response.message,
+          estadoMensaje: result.response.status,
+        },
+        errores: result.errors,
+      };
     } catch (error) {
       await this.errorNotificationService.sendErrorEmail(
         `Critical error in createBulk: ${error.message}`
       );
       throw new InternalServerErrorException('Error creating products in bulk');
     }
-  } 
+  }
 }

@@ -9,13 +9,13 @@ export class ProductService {
   constructor(
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
-    private readonly logsService: LogsService, // 👈 Inyectamos el LogsService
+    private readonly logsService: LogsService,
   ) {}
 
   async createBulk(
     productsData: Partial<Product>[],
     batchSize = 100,
-  ): Promise<{ count: number; products: Product[]; errors: any[] }> {
+  ): Promise<{ response: { code: number; message: string; status: string }; errors: any[] }> {
     if (!productsData || productsData.length === 0) {
       throw new Error('No products provided for bulk creation');
     }
@@ -33,48 +33,69 @@ export class ProductService {
         const batch = productsData.slice(i, i + batchSize);
         const batchErrors: any[] = [];
 
-        for (const productData of batch) {
+        for (const [index, productData] of batch.entries()) {
           try {
-            if (!productData.reference || !productData.name || !productData.event_type) {
-              throw new Error('Reference, name and tipoEvento are required');
+            // Validación campo por campo
+            const missingFields: string[] = [];
+            if (productData.reference === undefined || productData.reference === null) missingFields.push('reference');
+            if (productData.name === undefined || productData.name === null) missingFields.push('name');
+            if (productData.packing === undefined || productData.packing === null) missingFields.push('packing');
+            if (productData.convertion_rate === undefined || productData.convertion_rate === null) missingFields.push('convertion_rate');
+            if (productData.vat_group === undefined || productData.vat_group === null) missingFields.push('vat_group');
+            if (productData.vat === undefined || productData.vat === null) missingFields.push('vat');
+            if (productData.packing_to === undefined || productData.packing_to === null) missingFields.push('packing_to');
+            if (productData.is_active === undefined || productData.is_active === null) missingFields.push('is_active');
+
+            if (missingFields.length > 0) {
+              throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
             }
 
-            if (referenceSet.has(productData.reference)) {
-              throw new Error(`Duplicate reference '${productData.reference}' in the batch`);
+            // Validación de tipos (usamos aserción de tipo después de verificar undefined/null)
+            if (typeof productData.convertion_rate !== 'number') {
+              throw new Error(`Invalid type for convertion_rate: expected number, got ${typeof productData.convertion_rate}`);
             }
-            referenceSet.add(productData.reference);
+            if (typeof productData.vat !== 'number') {
+              throw new Error(`Invalid type for vat: expected number, got ${typeof productData.vat}`);
+            }
+            if (typeof productData.is_active !== 'number') {
+              throw new Error(`Invalid type for is_active: expected number, got ${typeof productData.is_active}`);
+            }
+
+            // Aserción de tipo para reference (sabemos que no es undefined/null aquí)
+            const reference = productData.reference as string;
+            if (referenceSet.has(reference)) {
+              throw new Error(`Duplicate reference '${reference}' in the batch`);
+            }
+            referenceSet.add(reference);
 
             const existingProduct = await this.productRepository.findOne({
-              where: { reference: productData.reference },
+              where: { reference },
             });
 
             if (existingProduct) {
-              Object.assign(existingProduct, productData, { procesado: false });
+              Object.assign(existingProduct, productData);
               const updatedProduct = await transactionalEntityManager.save(existingProduct);
-
               result.products.push(updatedProduct);
 
-              // Log de actualización
               this.logsService.log({
-                sync_type: 'producto',
+                sync_type: 'API',
                 record_id: updatedProduct.reference.toString(),
                 table_name: 'product',
-                event_type: 'UPDATE',
+                data: updatedProduct,
+                event_date: new Date(),
                 result: 'exitoso',
               });
             } else {
-              productData.processed = false;
-              const newProduct = this.productRepository.create(productData);
+              const newProduct = this.productRepository.create(productData as Product); // Aserción completa aquí
               const createdProduct = await transactionalEntityManager.save(newProduct);
-
               result.products.push(createdProduct);
 
-              // Log de creación
               this.logsService.log({
-                sync_type: 'producto',
+                sync_type: 'API',
                 record_id: createdProduct.reference.toString(),
                 table_name: 'product',
-                event_type: 'NEW',
+                data: createdProduct,
+                event_date: new Date(),
                 result: 'exitoso',
               });
             }
@@ -84,14 +105,15 @@ export class ProductService {
             batchErrors.push({
               product: productData,
               error: error.message,
+              index: i + index,
             });
 
-            // Log de error
             this.logsService.log({
-              sync_type: 'producto',
-              record_id: productData.reference ?? 'N/A',
+              sync_type: 'API',
+              record_id: (productData.reference as string | undefined) ?? 'N/A',
               table_name: 'product',
-              event_type: 'ERROR',
+              data: productData,
+              event_date: new Date(),
               result: 'fallido',
               error_message: error.message,
             });
@@ -102,6 +124,13 @@ export class ProductService {
       }
     });
 
-    return result;
+    return {
+      response: {
+        code: result.errors.length === 0 ? 200 : 200,
+        message: 'Transacción Exitosa',
+        status: result.errors.length === 0 ? 'Exitoso' : 'Fallido',
+      },
+      errors: result.errors,
+    };
   }
 }

@@ -21,14 +21,14 @@ export class WinstonDbTransport extends Transport {
       sync_type,
       record_id,
       table_name,
-      event_type,
+      data,
       event_date,
       result,
       error_message,
     } = info;
 
     try {
-      if (!sync_type || !record_id || !table_name || !event_type || !result) {
+      if (!sync_type || !record_id || !table_name || !result) {
         console.warn('Incomplete log, not saving to database:', info);
         return callback();
       }
@@ -38,7 +38,7 @@ export class WinstonDbTransport extends Transport {
         sync_type,
         record_id,
         table_name,
-        event_type,
+        data,
         event_date: event_date || new Date(),
         result,
         error_message,

@@ -7,9 +7,10 @@ interface LogPayload {
   sync_type: string;
   record_id: string;
   table_name: string;
-  event_type: string;
+  data: any;
   result: string;
   error_message?: string;
+  event_date: Date;
 }
 
 @Injectable()
@@ -23,10 +24,5 @@ export class LogsService implements OnModuleInit {
   }
 
   log(payload: LogPayload) {
-    this.logger.info({
-      message: `[LOG] ${payload.sync_type} - ${payload.table_name} - ${payload.event_type}`,
-      ...payload,
-      event_date: new Date(),
-    });
   }  
 }

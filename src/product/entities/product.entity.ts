@@ -42,13 +42,4 @@ export class Product {
   @UpdateDateColumn({ type: 'timestamp', precision: 6, default: () => 'CURRENT_TIMESTAMP(6)', onUpdate: 'CURRENT_TIMESTAMP(6)' })
   @ApiProperty({ description: 'Modification date', type: 'string', format: 'date-time' })
   modified: Date;
-
-  // 🔹 Nuevo campo: tipoEvento
-  @Column({ type: 'enum', enum: ['CREATE', 'UPDATE', 'DELETE'], nullable: false, name: 'event_type' })
-  @ApiProperty({ description: 'Event type (CREATE, UPDATE, DELETE)' })
-  event_type: 'CREATE' | 'UPDATE' | 'DELETE';
-
-  @Column({ type: 'boolean', default: false })
-  @ApiProperty({ description: 'Processing status', default: false })
-  processed: boolean;
 }
