@@ -35,7 +35,7 @@ export class ProductService {
 
         for (const [index, productData] of batch.entries()) {
           try {
-            // Validación campo por campo
+            // Field validation
             const missingFields: string[] = [];
             if (productData.reference === undefined || productData.reference === null) missingFields.push('reference');
             if (productData.name === undefined || productData.name === null) missingFields.push('name');
@@ -50,7 +50,7 @@ export class ProductService {
               throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
             }
 
-            // Validación de tipos
+            // Type validation
             if (typeof productData.convertion_rate !== 'number') {
               throw new Error(`Invalid type for convertion_rate: expected number, got ${typeof productData.convertion_rate}`);
             }
@@ -82,7 +82,7 @@ export class ProductService {
                 table_name: 'product',
                 data: updatedProduct,
                 event_date: new Date(),
-                result: 'exitoso',
+                result: 'successful', // Cambiado a inglés
               });
             } else {
               const newProduct = this.productRepository.create(productData as Product);
@@ -95,7 +95,7 @@ export class ProductService {
                 table_name: 'product',
                 data: createdProduct,
                 event_date: new Date(),
-                result: 'exitoso',
+                result: 'successful', // Cambiado a inglés
               });
             }
 
@@ -113,7 +113,7 @@ export class ProductService {
               table_name: 'product',
               data: productData,
               event_date: new Date(),
-              result: 'fallido',
+              result: 'failed', // Cambiado a inglés
               error_message: error.message,
             });
           }
@@ -131,19 +131,19 @@ export class ProductService {
     let message: string;
 
     if (successfulProducts === totalProducts) {
-      status = 'exitoso';
-      message = 'Transacción Exitosa';
+      status = 'successful'; // Cambiado a inglés
+      message = 'Transaction Successful'; // Cambiado a inglés
     } else if (failedProducts === totalProducts) {
-      status = 'fallido';
-      message = `${successfulProducts} de ${totalProducts} productos insertados correctamente`;
+      status = 'failed'; // Cambiado a inglés
+      message = `${successfulProducts} of ${totalProducts} products inserted successfully`; // Cambiado a inglés
     } else {
-      status = 'partial_success';
-      message = `${successfulProducts} de ${totalProducts} productos insertados correctamente`;
+      status = 'partial_success'; // Ya estaba en inglés
+      message = `${successfulProducts} of ${totalProducts} products inserted successfully`; // Cambiado a inglés
     }
 
     return {
       response: {
-        code: 200, // Mantenemos 200 ya que la transacción se procesó, incluso con errores
+        code: 200,
         message,
         status,
       },
