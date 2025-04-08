@@ -50,7 +50,7 @@ export class ProductService {
               throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
             }
 
-            // Validación de tipos (usamos aserción de tipo después de verificar undefined/null)
+            // Validación de tipos
             if (typeof productData.convertion_rate !== 'number') {
               throw new Error(`Invalid type for convertion_rate: expected number, got ${typeof productData.convertion_rate}`);
             }
@@ -61,7 +61,6 @@ export class ProductService {
               throw new Error(`Invalid type for is_active: expected number, got ${typeof productData.is_active}`);
             }
 
-            // Aserción de tipo para reference (sabemos que no es undefined/null aquí)
             const reference = productData.reference as string;
             if (referenceSet.has(reference)) {
               throw new Error(`Duplicate reference '${reference}' in the batch`);
@@ -86,7 +85,7 @@ export class ProductService {
                 result: 'exitoso',
               });
             } else {
-              const newProduct = this.productRepository.create(productData as Product); // Aserción completa aquí
+              const newProduct = this.productRepository.create(productData as Product);
               const createdProduct = await transactionalEntityManager.save(newProduct);
               result.products.push(createdProduct);
 
@@ -124,11 +123,29 @@ export class ProductService {
       }
     });
 
+    const totalProducts = productsData.length;
+    const successfulProducts = result.count;
+    const failedProducts = result.errors.length;
+
+    let status: string;
+    let message: string;
+
+    if (successfulProducts === totalProducts) {
+      status = 'exitoso';
+      message = 'Transacción Exitosa';
+    } else if (failedProducts === totalProducts) {
+      status = 'fallido';
+      message = `${successfulProducts} de ${totalProducts} productos insertados correctamente`;
+    } else {
+      status = 'partial_success';
+      message = `${successfulProducts} de ${totalProducts} productos insertados correctamente`;
+    }
+
     return {
       response: {
-        code: result.errors.length === 0 ? 200 : 200,
-        message: 'Transacción Exitosa',
-        status: result.errors.length === 0 ? 'Exitoso' : 'Fallido',
+        code: 200, // Mantenemos 200 ya que la transacción se procesó, incluso con errores
+        message,
+        status,
       },
       errors: result.errors,
     };

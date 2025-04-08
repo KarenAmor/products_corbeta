@@ -77,13 +77,13 @@ describe('ProductService', () => {
 
       expect(result.response.code).toBe(200);
       expect(result.response.message).toBe('Transacción Exitosa');
-      expect(result.response.status).toBe('Exitoso');
+      expect(result.response.status).toBe('exitoso');
       expect(result.errors.length).toBe(0);
       expect(productRepository.save).toHaveBeenCalledTimes(2);
       expect(logsServiceMock.log).toHaveBeenCalledTimes(2);
     });
 
-    it('should capture errors for invalid products', async () => {
+    it('should capture errors for invalid products with partial success', async () => {
       const productsData: Partial<Product>[] = [
         {
           reference: 'ref1',
@@ -135,16 +135,56 @@ describe('ProductService', () => {
       const result = await service.createBulk(productsData, 2);
 
       expect(result.response.code).toBe(200);
-      expect(result.response.message).toBe('Transacción Exitosa');
-      expect(result.response.status).toBe('Fallido');
+      expect(result.response.message).toBe('1 de 4 productos insertados correctamente');
+      expect(result.response.status).toBe('partial_success');
       expect(result.errors.length).toBe(3);
-      expect(result.errors[0].error).toBe("Duplicate reference 'ref1' in the batch"); // Mensaje corregido
+      expect(result.errors[0].error).toBe("Duplicate reference 'ref1' in the batch");
       expect(result.errors[1].error).toBe('Missing required fields: name');
       expect(result.errors[2].error).toContain('Invalid type for convertion_rate');
       expect(logsServiceMock.log).toHaveBeenCalledTimes(4); // 1 éxito + 3 fallos
     });
 
-    it('should update existing product', async () => {
+    it('should return failed status when all products fail', async () => {
+      const productsData: Partial<Product>[] = [
+        {
+          reference: 'ref1',
+          name: 'Product 1',
+          packing: 'UNI',
+          convertion_rate: 'invalid' as any, // Tipo incorrecto
+          vat_group: 'Group A',
+          vat: 0.1,
+          packing_to: 'CAJ',
+          is_active: 1,
+        },
+        {
+          reference: 'ref2',
+          packing: 'CAJ',
+          convertion_rate: 2,
+          vat_group: 'Group B',
+          vat: 0.2,
+          packing_to: 'PAL',
+          is_active: 0,
+        }, // Falta name
+      ];
+
+      productRepository.create.mockImplementation((data) => data);
+      productRepository.save.mockImplementation((data) =>
+        Promise.resolve({ ...data, modified: new Date() }),
+      );
+      productRepository.findOne.mockResolvedValue(undefined);
+
+      const result = await service.createBulk(productsData, 2);
+
+      expect(result.response.code).toBe(200);
+      expect(result.response.message).toBe('0 de 2 productos insertados correctamente');
+      expect(result.response.status).toBe('fallido');
+      expect(result.errors.length).toBe(2);
+      expect(result.errors[0].error).toContain('Invalid type for convertion_rate');
+      expect(result.errors[1].error).toBe('Missing required fields: name');
+      expect(logsServiceMock.log).toHaveBeenCalledTimes(2); // 2 fallos
+    });
+
+    it('should update existing product successfully', async () => {
       const productsData: Partial<Product>[] = [
         {
           reference: 'ref1',
@@ -177,7 +217,8 @@ describe('ProductService', () => {
       const result = await service.createBulk(productsData, 1);
 
       expect(result.response.code).toBe(200);
-      expect(result.response.status).toBe('Exitoso');
+      expect(result.response.message).toBe('Transacción Exitosa');
+      expect(result.response.status).toBe('exitoso');
       expect(result.errors.length).toBe(0);
       expect(productRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Updated Product' }),
