@@ -45,7 +45,12 @@ export class LogsService implements OnModuleInit {
   }
 
   log(payload: LogPayload) {
-  }  
+    this.logger.info({
+      message: `[LOG] ${payload.sync_type} - ${payload.table_name} - ${payload.result}`,
+      ...payload,
+      event_date: new Date(),
+    });
+  } 
   // Define un método log que recibe un objeto conforme a la interfaz LogPayload.
   // Actualmente, este método está vacío (sin implementación), lo que sugiere que es un esqueleto o placeholder
   // para una funcionalidad futura, como registrar el payload en Winston o en la base de datos.
