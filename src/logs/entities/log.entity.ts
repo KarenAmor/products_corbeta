@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-@Entity('sync_log')
+@Entity('sync_logs')
 export class LogEntity {
   @PrimaryGeneratedColumn()
   id: number;

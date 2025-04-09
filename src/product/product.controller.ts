@@ -69,8 +69,8 @@ export class ProductController {
   async createBulk(
     @Body() productsData: CreateProductDto[],
     @Query('batchSize') batchSize = 100,
-    @Headers('x-auth-username') username: string,
-    @Headers('x-auth-password') password: string,
+    @Headers('username') username: string,
+    @Headers('password') password: string,
   ) {
     // Método que maneja la creación masiva de productos. Recibe los datos en el cuerpo (body), 
     // un tamaño de lote opcional como query param (por defecto 100), y credenciales en los headers.
