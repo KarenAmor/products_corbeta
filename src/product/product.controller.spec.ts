@@ -92,8 +92,8 @@ describe('ProductController', () => {
     // Define pruebas para el método createBulk.
 
     const validCredentials = {
-      'x-auth-username': 'testUser',
-      'x-auth-password': 'testPass',
+      'username': 'testUser',
+      'password': 'testPass',
     };
     // Define credenciales válidas para usar en las pruebas.
 
@@ -145,7 +145,7 @@ describe('ProductController', () => {
       productServiceMock.createBulk.mockResolvedValue(serviceResponse);
       // Simula una respuesta exitosa del ProductService.
 
-      const result = await controller.createBulk(productDto, 100, validCredentials['x-auth-username'], validCredentials['x-auth-password']);
+      const result = await controller.createBulk(productDto, 100, validCredentials['username'], validCredentials['password']);
       // Ejecuta createBulk con credenciales válidas.
 
       expect(productServiceMock.createBulk).toHaveBeenCalledWith(
@@ -187,7 +187,7 @@ describe('ProductController', () => {
       productServiceMock.createBulk.mockResolvedValue(serviceResponse);
       // Simula una respuesta con errores del ProductService.
 
-      const result = await controller.createBulk(productDto, 100, validCredentials['x-auth-username'], validCredentials['x-auth-password']);
+      const result = await controller.createBulk(productDto, 100, validCredentials['username'], validCredentials['password']);
       // Ejecuta createBulk con credenciales válidas.
 
       expect(productServiceMock.createBulk).toHaveBeenCalled();
@@ -216,7 +216,7 @@ describe('ProductController', () => {
       // Simula un fallo crítico en el ProductService.
 
       await expect(
-        controller.createBulk(productDto, 100, validCredentials['x-auth-username'], validCredentials['x-auth-password'])
+        controller.createBulk(productDto, 100, validCredentials['username'], validCredentials['password'])
       ).rejects.toThrow(new InternalServerErrorException('Error creating products in bulk'));
       // Verifica que se lance InternalServerErrorException.
 
