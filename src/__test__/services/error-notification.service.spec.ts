@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ErrorNotificationService } from './error-notification.service';
+import { ErrorNotificationService } from '../../utils/error-notification.service';
 import * as nodemailer from 'nodemailer';
 // Importa herramientas de prueba de NestJS, el servicio a probar y la librería nodemailer para enviar correos.
 

@@ -12,9 +12,10 @@ import { ProductService } from './product.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ErrorNotificationService } from '../utils/error-notification.service';
 import { Product } from './entities/product.entity';
-import { CreateProductDto } from './dto/create-product-dto';
+import { CreateProductsWrapperDto } from './dto/create-product-dto';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import { CleanStringsPipe } from '../utils/clean-strings.pipe';
 
 @ApiTags('products')
 @Controller('products')
@@ -47,7 +48,7 @@ export class ProductController {
   @ApiOperation({ summary: 'Create products in bulk' })
   @ApiResponse({ status: 201, description: 'Products created successfully', type: [Product] })
   async createBulk(
-    @Body() productsData: CreateProductDto[],
+    @Body(CleanStringsPipe) wrapper: CreateProductsWrapperDto,
     @Query('batchSize') batchSize = 100,
     @Headers('username') username: string,
     @Headers('password') password: string,
@@ -62,6 +63,7 @@ export class ProductController {
     }
 
     try {
+      const productsData = wrapper.products;
       const result = await this.productService.createBulk(
         productsData.map(product => ({
           ...product,
