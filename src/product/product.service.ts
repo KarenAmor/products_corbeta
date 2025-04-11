@@ -25,7 +25,7 @@ export class ProductService {
     // Este método crea o actualiza productos en masa. Recibe un array de datos parciales de productos y un tamaño de lote opcional (por defecto 100).
 
     if (!productsData || productsData.length === 0) {
-      throw new Error('No products provided for bulk creation');
+      throw new Error('No products provided in the products array');
       // Verifica que se haya proporcionado al menos un producto; si no, lanza un error.
     }
 

@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 // Importa herramientas de NestJS para crear un módulo de pruebas.
 
-import { ProductService } from './product.service';
+import { ProductService } from '../../product/product.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Product } from './entities/product.entity';
-import { LogsService } from '../logs/logs.service';
+import { Product } from '../../product/entities/product.entity';
+import { LogsService } from '../../logs/logs.service';
 // Importa el servicio a probar, herramientas para inyectar el repositorio y las dependencias necesarias.
 
 describe('ProductService', () => {
@@ -54,7 +54,7 @@ describe('ProductService', () => {
     it('should throw error if no products are provided', async () => {
       // Prueba que verifica si se lanza un error cuando no se proporcionan productos.
       await expect(service.createBulk([])).rejects.toThrow(
-        'No products provided for bulk creation',
+        'No products provided in the products array',
       );
       // Espera que createBulk rechace la promesa con el mensaje de error correcto.
     });

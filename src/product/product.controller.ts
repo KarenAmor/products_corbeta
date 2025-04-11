@@ -8,13 +8,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common'; // Importación de decoradores y excepciones comunes de NestJS.
 
-import { ProductService } from './product.service'; // Servicio que maneja la lógica relacionada a productos.
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger'; // Decoradores para documentar el controlador con Swagger.
-import { ErrorNotificationService } from '../utils/error-notification.service'; // Servicio para enviar notificaciones de error.
-import { Product } from './entities/product.entity'; // Entidad del producto.
-import { CreateProductDto } from './dto/create-product-dto'; // DTO utilizado para crear productos.
-import { ConfigService } from '@nestjs/config'; // Servicio para acceder a variables de entorno.
-import * as bcrypt from 'bcrypt'; // Librería para comparación de contraseñas cifradas.
+import { ProductService } from './product.service';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ErrorNotificationService } from '../utils/error-notification.service';
+import { Product } from './entities/product.entity';
+import { CreateProductsWrapperDto } from './dto/create-product-dto';
+import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
+import { CleanStringsPipe } from '../utils/clean-strings.pipe';
 
 @ApiTags('products') // Agrupa este controlador bajo la etiqueta 'products' en la documentación Swagger.
 @Controller('products') // Define el prefijo de ruta para este controlador.
@@ -50,10 +51,10 @@ export class ProductController {
   @ApiOperation({ summary: 'Create products in bulk' }) // Descripción de la operación en Swagger.
   @ApiResponse({ status: 201, description: 'Products created successfully', type: [Product] }) // Respuesta esperada en Swagger.
   async createBulk(
-    @Body() productsData: CreateProductDto[], // Array de productos a crear (desde el body).
-    @Query('batchSize') batchSize = 100, // Tamaño del lote (opcional, por query param).
-    @Headers('username') username: string, // Nombre de usuario (desde headers).
-    @Headers('password') password: string, // Contraseña (desde headers).
+    @Body(CleanStringsPipe) wrapper: CreateProductsWrapperDto,
+    @Query('batchSize') batchSize = 100,
+    @Headers('username') username: string,
+    @Headers('password') password: string,
   ) {
     // Validación: si faltan credenciales, se lanza un 401.
     if (!username || !password) {
@@ -67,7 +68,7 @@ export class ProductController {
     }
 
     try {
-      // Se transforma cada producto y se asegura que 'is_active' sea numérico.
+      const productsData = wrapper.products;
       const result = await this.productService.createBulk(
         productsData.map(product => ({
           ...product,

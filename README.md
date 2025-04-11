@@ -20,7 +20,7 @@ El sistema de autenticación se basa en el envío de credenciales a través de h
 Validación de credenciales:
 
 Los endpoints protegidos requieren los headers:
-- **usuario**: Correo electrónico del usuario.
+- **username**: Correo electrónico del usuario.
 - **password**: Contraseña del usuario.
 
 Un AuthGuard verifica la autenticidad del usuario antes de procesar la petición.
@@ -49,7 +49,7 @@ El módulo de productos ofrece las siguientes funcionalidades:
 5. **Documentación de la API**:
   Se ha utilizado Swagger para generar la documentación interactiva de la API. Para acceder a la documentación, inicie el servidor y diríjase a:
     ```bash
-    http://localhost:3000/
+    http://localhost:3000/api-docs 
     ```
 
 Esta documentación detalla todos los endpoints disponibles, los formatos de peticiones y respuestas, así como ejemplos de uso.
@@ -108,10 +108,13 @@ Usa una herramienta como **Postman** o **cURL** para interactuar con la API. Aqu
 - **Carga masiva**:
   ```
   POST /products/
+  {
+  "products":
   [
     {"reference": "PROD002", "name": "Mouse", "vat": 5.00, "isActive": 1,"tipoEvento": "UPDATE"},
     {"reference": "PROD003", "name": "Monitor", "vat": 10.00, "isActive": true, "tipoEvento": "UPDATE"}
   ]
+  }
 
 ## Contribuir
 

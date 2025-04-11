@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { LogsService } from './logs.service';
+import { LogsService } from '../../logs/logs.service';
 import { DataSource } from 'typeorm';
 import { Logger } from 'winston';
-import { createWinstonLogger } from './winston.config';
+import { createWinstonLogger } from '../../logs/winston.config';
 // Importa herramientas de prueba de NestJS, el servicio a probar, dependencias como DataSource de TypeORM, Logger de Winston y una función para crear el logger.
 
 // Definimos la interfaz LogPayload en las pruebas
@@ -17,7 +17,7 @@ interface LogPayload {
 }
 // Define una interfaz para estructurar los datos que se pasarán al método log, usada en las pruebas.
 
-jest.mock('./winston.config', () => ({
+jest.mock('../../logs/winston.config', () => ({
   createWinstonLogger: jest.fn(),
 }));
 // Simula el módulo winston.config reemplazando createWinstonLogger con una función mock.

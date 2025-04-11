@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsPositive, IsBoolean, MaxLength, IsNotEmpty } from 'class-validator';
+import { IsString, IsNumber, IsPositive, IsBoolean, MaxLength, IsNotEmpty, IsArray } from 'class-validator';
 
 export class CreateProductDto {
   @ApiProperty({ description: 'Product reference', maxLength: 20 })
@@ -48,4 +48,11 @@ export class CreateProductDto {
   @IsBoolean()
   @IsNotEmpty()
   is_active: boolean;
+}
+
+export class CreateProductsWrapperDto {
+  @ApiProperty({ description: 'Array of products to create', type: [CreateProductDto] })
+  @IsArray()
+  @IsNotEmpty()
+  products: CreateProductDto[];
 }
