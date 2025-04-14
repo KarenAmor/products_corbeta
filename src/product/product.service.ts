@@ -119,7 +119,7 @@ export class ProductService {
                   sync_type: 'API',
                   record_id: savedProduct.reference,
                   table_name: 'product',
-                  data: savedProduct,
+                  row_data: savedProduct,
                   event_date: new Date(),
                   result: 'successful',
                 });
@@ -134,7 +134,7 @@ export class ProductService {
                   sync_type: 'API',
                   record_id: savedProduct.reference,
                   table_name: 'product',
-                  data: savedProduct,
+                  row_data: savedProduct,
                   event_date: new Date(),
                   result: 'successful',
                 });
@@ -159,7 +159,7 @@ export class ProductService {
                 sync_type: 'API',
                 record_id: productData.reference?.trim() || `INVALID_REF_${i + index}`,
                 table_name: 'product',
-                data: productData,
+                row_data: productData,
                 event_date: new Date(),
                 result: 'failed',
                 error_message: errorMessage,

@@ -15,7 +15,7 @@ export class LogEntity {
   table_name: string;
 
   @Column({ type: 'json' })
-  data?: any;
+  row_data?: any;
 
   @Column()
   event_date: Date;

@@ -9,7 +9,7 @@ interface LogPayload {
   sync_type: string;
   record_id: string;
   table_name: string;
-  data: any;
+  row_data: any;
   result: string;
   error_message?: string;
   event_date: Date;

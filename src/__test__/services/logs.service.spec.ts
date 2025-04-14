@@ -10,7 +10,7 @@ interface LogPayload {
   sync_type: string;
   record_id: string;
   table_name: string;
-  data: any;
+  row_data: any;
   result: string;
   error_message?: string;
   event_date: Date;
@@ -105,7 +105,7 @@ describe('LogsService', () => {
         sync_type: 'API',
         record_id: 'ref1',
         table_name: 'product',
-        data: { reference: 'ref1', name: 'Product 1' },
+        row_data: { reference: 'ref1', name: 'Product 1' },
         result: 'exitoso',
         event_date: new Date(),
       };
@@ -121,7 +121,7 @@ describe('LogsService', () => {
         sync_type: 'API',
         record_id: 'ref2',
         table_name: 'product',
-        data: { reference: 'ref2' },
+        row_data: { reference: 'ref2' },
         result: 'fallido',
         error_message: 'Missing required fields: name',
         event_date: new Date(),
@@ -145,7 +145,7 @@ describe('LogsService', () => {
         sync_type: 'API',
         record_id: 'ref1',
         table_name: 'product',
-        data: { reference: 'ref1' },
+        row_data: { reference: 'ref1' },
         result: 'exitoso',
         event_date: new Date(),
       };
@@ -177,7 +177,7 @@ describe('LogsService', () => {
         sync_type: 'API',
         record_id: 'ref2',
         table_name: 'product',
-        data: { reference: 'ref2' },
+        row_data: { reference: 'ref2' },
         result: 'fallido',
         error_message: 'Missing required fields: name',
         event_date: new Date(),
