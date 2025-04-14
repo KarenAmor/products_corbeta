@@ -235,10 +235,10 @@ describe('ProductController', () => {
       );
 
       expect(result).toEqual({
-        respuesta: {
-          codigoMensaje: serviceResponse.response.code,
-          mensaje: serviceResponse.response.message,
-          estadoMensaje: serviceResponse.response.status,
+        response: {
+          code: serviceResponse.response.code,
+          menssage: serviceResponse.response.message,
+          status: serviceResponse.response.status,
         },
         errores: serviceResponse.errors,
       });

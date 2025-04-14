@@ -6,8 +6,8 @@ import {
   InternalServerErrorException,
   Headers,
   UnauthorizedException,
-} from '@nestjs/common'; // Importación de decoradores y excepciones comunes de NestJS.
-
+  HttpException,
+} from '@nestjs/common';
 import { ProductService } from './product.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ErrorNotificationService } from '../utils/error-notification.service';
@@ -17,22 +17,34 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { CleanStringsPipe } from '../utils/clean-strings.pipe';
 
-@ApiTags('products') // Agrupa este controlador bajo la etiqueta 'products' en la documentación Swagger.
-@Controller('products') // Define el prefijo de ruta para este controlador.
+// Interfaz para tipar la respuesta de BadRequestException
+interface BulkCreateErrorResponse {
+  response: {
+    code: number;
+    message: string;
+    status: string;
+  };
+  errors: Array<{
+    product?: any;
+    error: string;
+    index: number;
+  }>;
+}
+
+@ApiTags('products')
+@Controller('products')
 export class ProductController {
-  private readonly authUser: string; // Usuario de autenticación desde variables de entorno.
-  private readonly authPasswordHash: string; // Hash de contraseña desde variables de entorno.
+  private readonly authUser: string;
+  private readonly authPasswordHash: string;
 
   constructor(
-    private readonly productService: ProductService, // Inyección del servicio de productos.
-    private readonly errorNotificationService: ErrorNotificationService, // Inyección del servicio de errores.
-    private readonly configService: ConfigService, // Inyección del servicio de configuración.
+    private readonly productService: ProductService,
+    private readonly errorNotificationService: ErrorNotificationService,
+    private readonly configService: ConfigService,
   ) {
-    // Se obtienen las credenciales desde las variables de entorno.
     const user = this.configService.get<string>('AUTH_USER');
     const passwordHash = this.configService.get<string>('AUTH_PASSWORD_HASH');
 
-    // Se lanza un error si las credenciales no están configuradas.
     if (!user || !passwordHash) {
       throw new Error('Missing required authentication environment variables');
     }
@@ -41,30 +53,27 @@ export class ProductController {
     this.authPasswordHash = passwordHash;
   }
 
-  // Método privado para verificar las credenciales enviadas en los headers.
   private async verifyCredentials(username: string, password: string): Promise<boolean> {
-    const isPasswordValid = await bcrypt.compare(password, this.authPasswordHash); // Compara el password con el hash.
-    return username === this.authUser && isPasswordValid; // Devuelve true si ambas credenciales coinciden.
+    const isPasswordValid = await bcrypt.compare(password, this.authPasswordHash);
+    return username === this.authUser && isPasswordValid;
   }
 
-  @Post() // Define una ruta POST en '/products'.
-  @ApiOperation({ summary: 'Create products in bulk' }) // Descripción de la operación en Swagger.
-  @ApiResponse({ status: 201, description: 'Products created successfully', type: [Product] }) // Respuesta esperada en Swagger.
+  @Post()
+  @ApiOperation({ summary: 'Create products in bulk' })
+  @ApiResponse({ status: 201, description: 'Products created successfully', type: [Product] })
   async createBulk(
     @Body(CleanStringsPipe) wrapper: CreateProductsWrapperDto,
     @Query('batchSize') batchSize = 100,
     @Headers('username') username: string,
     @Headers('password') password: string,
   ) {
-    // Validación: si faltan credenciales, se lanza un 401.
     if (!username || !password) {
       throw new UnauthorizedException('Missing authentication headers');
     }
 
-    // Verificación de credenciales.
     const validCredentials = await this.verifyCredentials(username, password);
     if (!validCredentials) {
-      throw new UnauthorizedException('Invalid credentials'); // Si no coinciden, se lanza 401.
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     try {
@@ -74,43 +83,60 @@ export class ProductController {
           ...product,
           is_active: product.is_active ? 1 : 0,
         })),
-        Number(batchSize), // Se asegura que el batchSize sea un número.
+        Number(batchSize),
       );
 
-      // Si hubo errores al guardar productos o lotes...
       if (result.errors.length > 0) {
-        // Se formatea cada error con detalle.
         const errorDetails = result.errors.map(err => {
           if (err.product) {
-            return `Product with reference "${err.product.reference}": ${err.error}`;
+            return `Product with reference "${err.product.reference || 'unknown'}": ${err.error}`;
           } else if (err.batch) {
             return `Error saving batch: ${err.error}`;
           }
           return `Unknown error: ${err}`;
         }).join('\n');
 
-        // Se notifica por email con los errores.
         await this.errorNotificationService.sendErrorEmail(
           `Errors creating products in bulk:\n${errorDetails}`
         );
       }
 
-      // Se retorna la respuesta estructurada esperada.
       return {
-        respuesta: {
-          codigoMensaje: result.response.code,
-          mensaje: result.response.message,
-          estadoMensaje: result.response.status,
+        response: {
+          code: result.response.code,
+          menssage: result.response.message,
+          status: result.response.status,
         },
         errores: result.errors,
       };
     } catch (error) {
-      // En caso de error inesperado, se notifica por correo.
+      // Manejar excepciones HTTP
+      if (error instanceof HttpException) {
+        const response = error.getResponse();
+        // Verificar si es la respuesta esperada de BadRequestException
+        if (
+          typeof response === 'object' &&
+          response !== null &&
+          'response' in response &&
+          'errors' in response
+        ) {
+          const typedResponse = response as BulkCreateErrorResponse;
+          return {
+            response: {
+              code: typedResponse.response.code,
+              menssage: typedResponse.response.message,
+              status: typedResponse.response.status,
+            },
+            errores: typedResponse.errors,
+          };
+        }
+        throw error; // Relanzar otras excepciones HTTP
+      }
+
+      // Para errores inesperados, enviar correo y lanzar 500
       await this.errorNotificationService.sendErrorEmail(
         `Critical error in createBulk: ${error.message}`
       );
-
-      // Y se lanza un error 500 al cliente.
       throw new InternalServerErrorException('Error creating products in bulk');
     }
   }
