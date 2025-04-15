@@ -50,11 +50,13 @@ export class ProductService {
             if (!productData.reference?.trim()) missingFields.push('reference');
             if (!productData.name?.trim()) missingFields.push('name');
             if (!productData.packing?.trim()) missingFields.push('packing');
-            if (productData.convertion_rate === undefined || productData.convertion_rate === null) missingFields.push('convertion_rate');
+            if (productData.convertion_rate === undefined || productData.convertion_rate === null)
+              missingFields.push('convertion_rate');
             if (!productData.vat_group?.trim()) missingFields.push('vat_group');
             if (productData.vat === undefined || productData.vat === null) missingFields.push('vat');
             if (!productData.packing_to?.trim()) missingFields.push('packing_to');
-            if (productData.is_active === undefined || productData.is_active === null) missingFields.push('is_active');
+            if (productData.is_active === undefined || productData.is_active === null)
+              missingFields.push('is_active');
 
             if (missingFields.length > 0) {
               throw new Error(`Missing, empty or null fields: ${missingFields.join(', ')}`);
@@ -86,7 +88,11 @@ export class ProductService {
             }
 
             // Validación de tipos
-            if (productData.convertion_rate !== undefined && productData.convertion_rate !== null && typeof productData.convertion_rate !== 'number') {
+            if (
+              productData.convertion_rate !== undefined &&
+              productData.convertion_rate !== null &&
+              typeof productData.convertion_rate !== 'number'
+            ) {
               invalidFields.push(`convertion_rate: expected number, got ${typeof productData.convertion_rate}`);
             }
             if (typeof productData.vat !== 'number') {
@@ -114,38 +120,29 @@ export class ProductService {
             if (existingProduct) {
               Object.assign(existingProduct, productData);
               savedProduct = await transactionalEntityManager.save(existingProduct);
-              try {
-                this.logsService.log({
-                  sync_type: 'API',
-                  record_id: savedProduct.reference,
-                  table_name: 'product',
-                  row_data: savedProduct,
-                  event_date: new Date(),
-                  result: 'successful',
-                });
-              } catch (logError) {
-                console.warn(`Failed to log success for product ${reference}: ${logError.message}`);
-              }
             } else {
               const newProduct = this.productRepository.create(productData as Product);
               savedProduct = await transactionalEntityManager.save(newProduct);
-              try {
-                this.logsService.log({
-                  sync_type: 'API',
-                  record_id: savedProduct.reference,
-                  table_name: 'product',
-                  row_data: savedProduct,
-                  event_date: new Date(),
-                  result: 'successful',
-                });
-              } catch (logError) {
-                console.warn(`Failed to log success for product ${reference}: ${logError.message}`);
-              }
+            }
+
+            // Excluir 'modified' y 'created' del log
+            const { modified, created, ...logRowData } = savedProduct;
+
+            try {
+              this.logsService.log({
+                sync_type: 'API',
+                record_id: savedProduct.reference,
+                table_name: 'product',
+                row_data: logRowData,
+                event_date: new Date(),
+                result: 'successful',
+              });
+            } catch (logError) {
+              console.warn(`Failed to log success for product ${reference}: ${logError.message}`);
             }
 
             result.products.push(savedProduct);
             result.count += 1;
-
           } catch (error) {
             const errorMessage = error.message || 'Unknown error';
             batchErrors.push({
@@ -154,12 +151,14 @@ export class ProductService {
               index: i + index,
             });
 
+            // Opcional: si quieres excluir 'modified' y 'created' del log de error (en caso de que existan)
+            const { modified, created, ...logErrorData } = productData;
             try {
               this.logsService.log({
                 sync_type: 'API',
                 record_id: productData.reference?.trim() || `INVALID_REF_${i + index}`,
                 table_name: 'product',
-                row_data: productData,
+                row_data: logErrorData,
                 event_date: new Date(),
                 result: 'failed',
                 error_message: errorMessage,
@@ -169,7 +168,6 @@ export class ProductService {
             }
           }
         }
-
         result.errors.push(...batchErrors);
       }
     });
