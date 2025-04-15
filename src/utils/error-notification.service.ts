@@ -12,20 +12,23 @@ dotenv.config();
 
 export class ErrorNotificationService {
   private transporter;
+  private readonly enabled: boolean;
   // Declara una propiedad privada para almacenar el objeto transporter de nodemailer.
 
   constructor() {
+    this.enabled = process.env.EMAIL_NOTIFICATIONS_ENABLED === 'true';
     // Define el constructor que se ejecuta al instanciar el servicio.
-
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST, 
-      port: Number(process.env.SMTP_PORT), 
-      secure: false, 
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
-      },
-    });
+    if (this.enabled) {
+      this.transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT),
+        secure: false,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASSWORD,
+        },
+      });
+    }
     // Inicializa el transporter usando nodemailer.createTransport con la configuración SMTP obtenida de las variables de entorno:
     // - host: dirección del servidor SMTP.
     // - port: puerto del servidor SMTP, convertido a número desde string.
@@ -34,6 +37,10 @@ export class ErrorNotificationService {
   }
 
   async sendErrorEmail(errorMessage: string) {
+    if (!this.enabled) {
+      console.log('Error notification email is disabled.');
+      return;
+    }
     // Define un método asíncrono para enviar un correo de notificación de errores, que recibe un mensaje de error como parámetro.
 
     const mailOptions = {
