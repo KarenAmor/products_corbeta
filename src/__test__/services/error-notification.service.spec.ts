@@ -26,6 +26,7 @@ describe('ErrorNotificationService', () => {
     SMTP_PASSWORD: 'testpassword',
     SMTP_FROM_NAME: 'Test System',
     SMTP_FROM_EMAIL: 'noreply@example.com',
+    SMTP_ENABLED: 'true',
   };
   // Define un objeto con variables de entorno simuladas para la configuración SMTP.
 
