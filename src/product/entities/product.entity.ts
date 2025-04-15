@@ -39,7 +39,7 @@ export class Product {
   @ApiProperty({ description: 'Creation date', type: 'string', format: 'date-time' })
   created: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', precision: 6, default: () => 'CURRENT_TIMESTAMP(6)', onUpdate: 'CURRENT_TIMESTAMP(6)' })
+  @Column({ type: 'timestamp', precision: 6, nullable: true })
   @ApiProperty({ description: 'Modification date', type: 'string', format: 'date-time' })
-  modified: Date;
+  modified: Date | null;
 }
