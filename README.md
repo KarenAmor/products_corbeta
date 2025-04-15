@@ -87,6 +87,17 @@ Esta documentación detalla todos los endpoints disponibles, los formatos de pet
      DB_PASSWORD=tu_contraseña_de_base_de_datos
      DB_NAME=nombre_de_tu_base_de_datos
      DB_SYNCHRONIZE=true_o_false
+     # SMTP Configuration
+     SMTP_HOST=
+     SMTP_PORT=
+     SMTP_USER=
+     SMTP_PASSWORD=
+     SMTP_FROM_NAME=
+     SMTP_FROM_EMAIL=
+     EMAIL_NOTIFICATIONS_ENABLED=
+     # Auth
+     AUTH_USER=
+     AUTH_PASSWORD_HASH=
     ```
 
 4. **Inicializa la base de datos**:
