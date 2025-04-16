@@ -12,7 +12,7 @@ export class LogEntity {
   record_id: string;
 
   @Column()
-  table_name: string;
+  process: string;
 
   @Column({ type: 'json' })
   row_data?: any;

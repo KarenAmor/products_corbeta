@@ -9,7 +9,7 @@ import { createWinstonLogger } from '../../logs/winston.config';
 interface LogPayload {
   sync_type: string;
   record_id: string;
-  table_name: string;
+  process: string;
   row_data: any;
   result: string;
   error_message?: string;
@@ -104,7 +104,7 @@ describe('LogsService', () => {
       const payload: LogPayload = {
         sync_type: 'API',
         record_id: 'ref1',
-        table_name: 'product',
+        process: 'product',
         row_data: { reference: 'ref1', name: 'Product 1' },
         result: 'exitoso',
         event_date: new Date(),
@@ -120,7 +120,7 @@ describe('LogsService', () => {
       const payload: LogPayload = {
         sync_type: 'API',
         record_id: 'ref2',
-        table_name: 'product',
+        process: 'product',
         row_data: { reference: 'ref2' },
         result: 'fallido',
         error_message: 'Missing required fields: name',
@@ -144,7 +144,7 @@ describe('LogsService', () => {
       const payload: LogPayload = {
         sync_type: 'API',
         record_id: 'ref1',
-        table_name: 'product',
+        process: 'product',
         row_data: { reference: 'ref1' },
         result: 'exitoso',
         event_date: new Date(),
@@ -176,7 +176,7 @@ describe('LogsService', () => {
       const payload: LogPayload = {
         sync_type: 'API',
         record_id: 'ref2',
-        table_name: 'product',
+        process: 'product',
         row_data: { reference: 'ref2' },
         result: 'fallido',
         error_message: 'Missing required fields: name',

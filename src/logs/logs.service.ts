@@ -8,7 +8,7 @@ import { createWinstonLogger } from './winston.config';
 interface LogPayload {
   sync_type: string;
   record_id: string;
-  table_name: string;
+  process: string;
   row_data: any;
   result: string;
   error_message?: string;
@@ -46,7 +46,7 @@ export class LogsService implements OnModuleInit {
 
   log(payload: LogPayload) {
     this.logger.info({
-      message: `[LOG] ${payload.sync_type} - ${payload.table_name} - ${payload.result}`,
+      message: `[LOG] ${payload.sync_type} - ${payload.process} - ${payload.result}`,
       ...payload,
       event_date: new Date(),
     });

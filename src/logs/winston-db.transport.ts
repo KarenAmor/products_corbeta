@@ -37,7 +37,7 @@ export class WinstonDbTransport extends Transport {
     const {
       sync_type,
       record_id,
-      table_name,
+      process,
       row_data,
       event_date,
       result,
@@ -46,7 +46,7 @@ export class WinstonDbTransport extends Transport {
     // Desestructura el objeto info para extraer los campos esperados del log.
 
     try {
-      if (!sync_type || !record_id || !table_name || !result) {
+      if (!sync_type || !record_id || !process || !result) {
         console.warn('Incomplete log, not saving to database:', info);
         return callback();
       }
@@ -59,7 +59,7 @@ export class WinstonDbTransport extends Transport {
       const log = repo.create({
         sync_type,
         record_id,
-        table_name,
+        process,
         row_data,
         event_date: event_date || new Date(),
         result,
