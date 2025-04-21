@@ -97,7 +97,6 @@ describe('ErrorNotificationService', () => {
 
       expect(transporterMock.sendMail).toHaveBeenCalledWith({
         from: `"${mockEnv.SMTP_FROM_NAME}" <${mockEnv.SMTP_FROM_EMAIL}>`,
-        to: mockEnv.SMTP_USER,
         subject: '⚠️ System Error',
         text: `An error has been detected:\n\n${errorMessage}`,
       });

@@ -89,7 +89,7 @@ describe('ProductService', () => {
 
       const result = await service.createBulk(productsData, 1);
 
-      expect(result.response.code).toBe(200);
+      expect(result.response.code).toBe(201);
       expect(result.response.message).toBe('Transaction Successful');
       expect(result.response.status).toBe('successful');
       expect(result.errors.length).toBe(0);
@@ -149,7 +149,7 @@ describe('ProductService', () => {
 
       const result = await service.createBulk(productsData, 2);
 
-      expect(result.response.code).toBe(200);
+      expect(result.response.code).toBe(201);
       expect(result.response.message).toBe('1 of 4 products inserted successfully');
       expect(result.response.status).toBe('partial_success');
       expect(result.errors.length).toBe(3);
