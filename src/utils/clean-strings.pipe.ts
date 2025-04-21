@@ -21,34 +21,33 @@ export class CleanStringsPipe implements PipeTransform {
     return cleaned;
   }
 
-  // Método principal del pipe que transforma el valor recibido
+  // Método para limpiar recursivamente un objeto o arreglo
+  private cleanObject(value: any): any {
+    if (typeof value !== 'object' || value === null) {
+      return typeof value === 'string' ? this.cleanString(value) : value;
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.cleanObject(item));
+    }
+
+    const cleaned: { [key: string]: any } = {};
+    for (const key in value) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        cleaned[key] = this.cleanObject(value[key]);
+      }
+    }
+
+    return cleaned;
+  }
+
+  // Método principal del pipe
   transform(value: any) {
     if (!value || typeof value !== 'object') {
       throw new BadRequestException('Invalid input data');
     }
 
-    // Verificar que el objeto tenga la estructura esperada { products: [...] }
-    if (!Array.isArray(value.products)) {
-      throw new BadRequestException('Input must contain a "products" array');
-    }
-
-    // Crear una copia profunda del objeto para evitar mutar el original
-    const cleanedValue = JSON.parse(JSON.stringify(value));
-
-    // Iterar sobre cada producto en el array products
-    cleanedValue.products = cleanedValue.products.map((product: any) => {
-      const cleanedProduct = { ...product };
-
-      // Limpiar cada campo de tipo string
-      for (const key in cleanedProduct) {
-        if (typeof cleanedProduct[key] === 'string') {
-          cleanedProduct[key] = this.cleanString(cleanedProduct[key]);
-        }
-      }
-
-      return cleanedProduct;
-    });
-
-    return cleanedValue;
+    // Crear una copia profunda y limpiar el objeto recursivamente
+    return this.cleanObject(JSON.parse(JSON.stringify(value)));
   }
 }

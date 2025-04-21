@@ -7,6 +7,7 @@ import {
   Headers,
   UnauthorizedException,
   HttpException,
+  HttpCode
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -59,85 +60,114 @@ export class ProductController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create products in bulk' })
-  @ApiResponse({ status: 201, description: 'Products created successfully', type: [Product] })
-  async createBulk(
-    @Body(CleanStringsPipe) wrapper: CreateProductsWrapperDto,
-    @Query('batchSize') batchSize = 100,
-    @Headers('username') username: string,
-    @Headers('password') password: string,
-  ) {
-    if (!username || !password) {
-      throw new UnauthorizedException('Missing authentication headers');
-    }
+  @HttpCode(201)
+@ApiOperation({ summary: 'Create products in bulk' })
+@ApiResponse({ status: 201, description: 'Products created successfully', type: [Product] })
+async createBulk(
+  @Body(CleanStringsPipe) wrapper: CreateProductsWrapperDto,
+  @Query('batchSize') batchSize = 100,
+  @Headers('username') username: string,
+  @Headers('password') password: string,
+) {
+  if (!username || !password) {
+    throw new UnauthorizedException('Missing authentication headers');
+  }
 
-    const validCredentials = await this.verifyCredentials(username, password);
-    if (!validCredentials) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+  const validCredentials = await this.verifyCredentials(username, password);
+  if (!validCredentials) {
+    throw new UnauthorizedException('Invalid credentials');
+  }
 
-    try {
-      const productsData = wrapper.products;
-      const result = await this.productService.createBulk(
-        productsData.map(product => ({
-          ...product,
-          is_active: product.is_active ? 1 : 0,
-        })),
-        Number(batchSize),
-      );
+  try {
+    const productsData = wrapper.products;
+    const result = await this.productService.createBulk(
+      productsData.map(product => ({
+        ...product,
+        is_active: product.is_active ? 1 : 0,
+      })),
+      Number(batchSize),
+    );
 
-      if (result.errors.length > 0) {
-        const errorDetails = result.errors.map(err => {
+    if (result.errors.length > 0) {
+      const errorDetails = result.errors
+        .map(err => {
           if (err.product) {
             return `Product with reference "${err.product.reference || 'unknown'}": ${err.error}`;
-          } else if (err.batch) {
-            return `Error saving batch: ${err.error}`;
           }
-          return `Unknown error: ${err}`;
-        }).join('\n');
+          return `Unknown error: ${err.error}`;
+        })
+        .join('\n');
 
+      console.log('Intentando enviar correo de error con detalles:', errorDetails);
+      try {
         await this.errorNotificationService.sendErrorEmail(
-          `Errors creating products in bulk:\n${errorDetails}`
+          `Errors creating products in bulk:\n${errorDetails}`,
         );
+        console.log('Correo de error enviado exitosamente');
+      } catch (emailError) {
+        console.error('Error al enviar correo de notificación:', emailError.message);
       }
-
-      return {
-        response: {
-          code: result.response.code,
-          menssage: result.response.message,
-          status: result.response.status,
-        },
-        errores: result.errors,
-      };
-    } catch (error) {
-      // Manejar excepciones HTTP
-      if (error instanceof HttpException) {
-        const response = error.getResponse();
-        // Verificar si es la respuesta esperada de BadRequestException
-        if (
-          typeof response === 'object' &&
-          response !== null &&
-          'response' in response &&
-          'errors' in response
-        ) {
-          const typedResponse = response as BulkCreateErrorResponse;
-          return {
-            response: {
-              code: typedResponse.response.code,
-              menssage: typedResponse.response.message,
-              status: typedResponse.response.status,
-            },
-            errores: typedResponse.errors,
-          };
-        }
-        throw error; // Relanzar otras excepciones HTTP
-      }
-
-      // Para errores inesperados, enviar correo y lanzar 500
-      await this.errorNotificationService.sendErrorEmail(
-        `Critical error in createBulk: ${error.message}`
-      );
-      throw new InternalServerErrorException('Error creating products in bulk');
     }
+
+    // Devolver la respuesta con el código de estado correcto
+    return {
+      response: {
+        code: result.response.code,
+        menssage: result.response.message,
+        status: result.response.status,
+      },
+      errores: result.errors,
+    };
+  } catch (error) {
+    if (error instanceof HttpException) {
+      const response = error.getResponse() as BulkCreateErrorResponse;
+      // Enviar correo de notificación para errores
+      if (response.errors && response.errors.length > 0) {
+        const errorDetails = response.errors
+          .map(err => {
+            if (err.product) {
+              return `Product with reference "${err.product.reference || 'unknown'}": ${err.error}`;
+            }
+            return `Unknown error: ${err.error}`;
+          })
+          .join('\n');
+
+        console.log('Intentando enviar correo de error para BadRequestException:', errorDetails);
+        try {
+          await this.errorNotificationService.sendErrorEmail(
+            `Errors creating products in bulk:\n${errorDetails}`,
+          );
+          console.log('Correo de error enviado exitosamente');
+        } catch (emailError) {
+          console.error('Error al enviar correo de notificación:', emailError.message);
+        }
+      }
+
+      throw new HttpException(
+        {
+          response: {
+            code: response.response.code,
+            menssage: response.response.message,
+            status: response.response.status,
+          },
+          errores: response.errors,
+        },
+        response.response.code,
+      );
+    }
+
+    // Enviar correo para errores críticos
+    console.log('Intentando enviar correo para error crítico:', error.message);
+    try {
+      await this.errorNotificationService.sendErrorEmail(
+        `Critical error in createBulk: ${error.message}`,
+      );
+      console.log('Correo de error crítico enviado exitosamente');
+    } catch (emailError) {
+      console.error('Error al enviar correo de notificación crítica:', emailError.message);
+    }
+
+    throw new InternalServerErrorException('Error creating products in bulk');
   }
+}
 }

@@ -33,6 +33,7 @@ export class ProductService {
       errors: [] as any[],
     };
 
+    // Set para validar duplicados dentro del mismo lote
     const referenceSet = new Set<string>();
 
     await this.productRepository.manager.transaction(async (transactionalEntityManager) => {
@@ -200,7 +201,7 @@ export class ProductService {
 
     return {
       response: {
-        code: 200,
+        code: 201,
         message,
         status,
       },
