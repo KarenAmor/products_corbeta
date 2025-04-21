@@ -36,7 +36,7 @@ export class CatalogService {
     // Set para validar duplicados dentro del mismo lote
     const catalogKeySet = new Set<string>();
 
-    await this.catalogRepository.manager.transaction(async (manager) => {
+    await this.catalogRepository.manager.transaction(async (transactionalEntityManager) => {
       for (let i = 0; i < catalogsData.length; i += batchSize) {
         const batch = catalogsData.slice(i, i + batchSize);
         const batchErrors: any[] = [];
@@ -80,7 +80,7 @@ export class CatalogService {
             catalogKeySet.add(uniqueKey);
 
             // Buscar si ya existe en base de datos
-            const existing = await manager.findOne(Catalog, {
+            const existingCatalog = await transactionalEntityManager.findOne(Catalog, {
                 where: {
                   name: catalogData.name!.trim(),
                   city_id: catalogData.city_id,
@@ -90,16 +90,18 @@ export class CatalogService {
             let savedCatalog: Catalog;
 
             // Si existe, actualizar; si no, insertar
-            if (existing) {
-              Object.assign(existing, catalogData);
-              savedCatalog = await manager.save(existing);
+            if (existingCatalog) {
+              Object.assign(existingCatalog, catalogData);
+              savedCatalog = await transactionalEntityManager.save(existingCatalog);
             } else {
               const newCatalog = this.catalogRepository.create(catalogData as Catalog);
-              savedCatalog = await manager.save(newCatalog);
+              savedCatalog = await transactionalEntityManager.save(newCatalog);
             }
 
             // Registrar log de éxito (omitimos campos automáticos)
             const { created, modified, ...logRowData } = savedCatalog;
+
+            try{
             this.logsService.log({
               sync_type: 'API',
               record_id: `${savedCatalog.id}`,
@@ -108,6 +110,9 @@ export class CatalogService {
               event_date: new Date(),
               result: 'successful',
             });
+          } catch (logError) {
+            console.warn(`Failed to log success for catalog ${savedCatalog.id}: ${logError.message}`);
+          }
 
             result.catalogs.push(savedCatalog);
             result.count += 1;
@@ -122,6 +127,7 @@ export class CatalogService {
 
             // Registrar log de error
             const { created, modified, ...logErrorData } = catalogData;
+            try{
             this.logsService.log({
               sync_type: 'API',
               record_id: `INVALID_ID_${i + index}`,
@@ -131,6 +137,9 @@ export class CatalogService {
               result: 'failed',
               error_message: errorMessage,
             });
+          } catch (logError) {
+            console.warn(`Failed to log error for catalog at index ${i + index}: ${logError.message}`);
+          }
           }
         }
 
@@ -139,31 +148,37 @@ export class CatalogService {
       }
     });
 
-    const total = catalogsData.length;
-    const successful = result.count;
-    const failed = result.errors.length;
+    const totalCatalogs = catalogsData.length;
+    const successfulCatalogs = result.count;
+    const failedCatalogs = result.errors.length;
 
     let status: string;
     let message: string;
 
     // Construir la respuesta según el resultado
-    if (successful === total) {
+    if (successfulCatalogs === totalCatalogs) {
       status = 'successful';
       message = 'Transaction Successful';
-    } else if (failed === total) {
+    } else if (failedCatalogs === totalCatalogs) {
       status = 'failed';
       message = 'All catalogs contain invalid data';
       throw new BadRequestException({
-        response: { code: 400, message, status },
+        response: { 
+          code: 400, 
+          message, 
+          status },
         errors: result.errors,
       });
     } else {
       status = 'partial_success';
-      message = `${successful} of ${total} catalogs inserted successfully`;
+      message = `${successfulCatalogs} of ${totalCatalogs} catalogs inserted successfully`;
     }
 
     return {
-      response: { code: 200, message, status },
+      response: { 
+        code: 201, 
+        message, 
+        status },
       errors: result.errors,
     };
   }

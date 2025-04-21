@@ -38,8 +38,8 @@ El módulo de productos ofrece las siguientes funcionalidades:
    - En la carga masiva, los errores no detienen el proceso; los productos válidos se registran y los errores se reportan por email.
 
 3. **Sistema de Logs**:
-   - Registra automáticamente las operaciones en la tabla `products` (creación, modificación).
-   - Cada cambio genera un log con la información relevante (como la `reference`, el tipo de operación y los datos antes/después).
+   - Registra automáticamente las operaciones realizadas en el API (creación, modificación).
+   - Cada cambio genera un log con la información relevante (como la `reference` o `id`, el tipo de operación y los datos antes/después).
 
 4. **Pruebas Unitarias**:
   Se han implementado pruebas unitarias con Jest para garantizar la calidad del código en los siguientes módulos:
@@ -95,6 +95,7 @@ Esta documentación detalla todos los endpoints disponibles, los formatos de pet
      SMTP_FROM_NAME=
      SMTP_FROM_EMAIL=
      EMAIL_NOTIFICATIONS_ENABLED=
+     EMAIL_RECIPIENT=
      # Auth
      AUTH_USER=
      AUTH_PASSWORD_HASH=
@@ -122,10 +123,24 @@ Usa una herramienta como **Postman** o **cURL** para interactuar con la API. Aqu
   {
   "products":
   [
-    {"reference": "PROD002", "name": "Mouse", "vat": 5.00, "isActive": 1,"tipoEvento": "UPDATE"},
-    {"reference": "PROD003", "name": "Monitor", "vat": 10.00, "isActive": true, "tipoEvento": "UPDATE"}
+    {"reference": "PROD001", "name": "Mouse", "vat": 5.00, "isActive": 1},
+    {"reference": "PROD002", "name": "Monitor", "vat": 10.00, "isActive": true}
+    {"reference": "PROD003", "name": "Mouse", "vat": 5.00, "isActive": 1},
+    {"reference": "PROD004", "name": "Monitor", "vat": 10.00, "isActive": true}
   ]
   }
+   ```
+   ```
+  POST /catalogs/
+  {
+  "catalogs":
+  [
+    {"name": "catalog001", "city_id": 1, "isActive": 1},
+    {"name": "catalog002", "city_id": 2, "isActive": 0},
+    {"name": "catalog003", "city_id": 3, "isActive": 1},
+  ]
+  }
+  ```
 
 ## Contribuir
 

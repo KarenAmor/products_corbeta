@@ -7,6 +7,7 @@ import {
   Headers,
   UnauthorizedException,
   HttpException,
+  HttpCode,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CatalogService } from './catalog.service';
@@ -17,6 +18,7 @@ import { CleanStringsPipe } from '../utils/clean-strings.pipe';
 import { CreateCatalogsWrapperDto } from './dto/create-catalog.dto';
 import { Catalog } from './entities/catalog.entity';
 
+// Interfaz para tipar errores de respuesta masiva
 interface BulkCreateErrorResponse {
   response: {
     code: number;
@@ -52,14 +54,16 @@ export class CatalogController {
     this.authPasswordHash = passwordHash;
   }
 
+  // Validar credenciales básicas
   private async verifyCredentials(username: string, password: string): Promise<boolean> {
     const isPasswordValid = await bcrypt.compare(password, this.authPasswordHash);
     return username === this.authUser && isPasswordValid;
   }
 
   @Post()
-  @ApiOperation({ summary: 'Crear catálogos en lote' })
-  @ApiResponse({ status: 201, description: 'Catálogos creados exitosamente', type: [Catalog] })
+  @HttpCode(201)
+  @ApiOperation({ summary: 'Create catalogs in bulk' })
+  @ApiResponse({ status: 201, description: 'Catalogs created successfully', type: [Catalog] })
   async createBulk(
     @Body(CleanStringsPipe) wrapper: CreateCatalogsWrapperDto,
     @Query('batchSize') batchSize = 100,
@@ -67,16 +71,17 @@ export class CatalogController {
     @Headers('password') password: string,
   ) {
     if (!username || !password) {
-      throw new UnauthorizedException('Faltan cabeceras de autenticación');
+      throw new UnauthorizedException('Missing authentication headers');
     }
 
     const validCredentials = await this.verifyCredentials(username, password);
     if (!validCredentials) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     try {
       const catalogsData = wrapper.catalogs;
+
       const result = await this.catalogService.createBulk(
         catalogsData.map(catalog => ({
           ...catalog,
@@ -85,38 +90,66 @@ export class CatalogController {
         Number(batchSize),
       );
 
+      // Si hay errores, notificar por correo
       if (result.errors.length > 0) {
         const errorDetails = result.errors
           .map(err => {
             if (err.catalog) {
-              return `Catálogo con nombre "${err.catalog.name || 'desconocido'}": ${err.error}`;
-            } else if (err.batch) {
-              return `Error al guardar el lote: ${err.error}`;
+              return `Catalog with name "${err.catalog.name || 'unknown'}": ${err.error}`;
             }
-            return `Error desconocido: ${err}`;
+            return `Unknown error: ${err.error}`;
           })
           .join('\n');
 
-        await this.errorNotificationService.sendErrorEmail(
-          `Errores al crear catálogos en lote:\n${errorDetails}`,
-        );
+        console.log('Attempting to send error email with details:', errorDetails);
+
+        try {
+          await this.errorNotificationService.sendErrorEmail(
+            `Errors creating catalogs in bulk:\n${errorDetails}`,
+          );
+          console.log('Error email sent successfully');
+        } catch (emailError) {
+          console.error('Failed to send error notification email:', emailError.message);
+        }
       }
 
-      // Establecer el código de estado HTTP basado en el resultado
-      throw new HttpException(
-        {
-          response: {
-            code: result.response.code,
-            menssage: result.response.message,
-            status: result.response.status,
-          },
-          errores: result.errors,
+      // Retornar resultado con estado correcto
+      return {
+        response: {
+          code: result.response.code,
+          menssage: result.response.message,
+          status: result.response.status,
         },
-        result.response.code, // Usar el código de estado del resultado
-      );
+        errores: result.errors,
+      };
     } catch (error) {
+      // Manejo de excepciones controladas
       if (error instanceof HttpException) {
         const response = error.getResponse() as BulkCreateErrorResponse;
+      
+        // Si hay errores, enviar correo de notificación
+        if (response.errors && response.errors.length > 0) {
+          const errorDetails = response.errors
+            .map(err => {
+              if (err.catalog) {
+                return `Catalog with name "${err.catalog.name || 'unknown'}": ${err.error}`;
+              }
+              return `Unknown error: ${err.error}`;
+            })
+            .join('\n');
+      
+          console.log('Attempting to send error email for HttpException:', errorDetails);
+      
+          try {
+            await this.errorNotificationService.sendErrorEmail(
+              `Errors creating catalogs in bulk:\n${errorDetails}`,
+            );
+            console.log('Error email sent successfully');
+          } catch (emailError) {
+            console.error('Failed to send error notification email:', emailError.message);
+          }
+        }
+      
         throw new HttpException(
           {
             response: {
@@ -126,14 +159,22 @@ export class CatalogController {
             },
             errores: response.errors,
           },
-          response.response.code, // Usar el código de estado del error
+          response.response.code,
         );
+      }      
+
+      // Manejo de errores críticos no controlados
+      console.log('Attempting to send critical error email:', error.message);
+      try {
+        await this.errorNotificationService.sendErrorEmail(
+          `Critical error in createBulk: ${error.message}`,
+        );
+        console.log('Critical error email sent successfully');
+      } catch (emailError) {
+        console.error('Failed to send critical error notification:', emailError.message);
       }
 
-      await this.errorNotificationService.sendErrorEmail(
-        `Error crítico en createBulk de catálogos: ${error.message}`,
-      );
-      throw new InternalServerErrorException('Error al crear catálogos en lote');
+      throw new InternalServerErrorException('Error creating catalogs in bulk');
     }
   }
 }
