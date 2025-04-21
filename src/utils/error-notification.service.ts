@@ -45,7 +45,7 @@ export class ErrorNotificationService {
 
     const mailOptions = {
       from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
-      to: process.env.SMTP_USER, 
+      to: process.env.EMAIL_RECIPIENT, 
       subject: '⚠️ System Error',
       text: `An error has been detected:\n\n${errorMessage}`,
     };
