@@ -1,22 +1,19 @@
-// src/catalogs/dto/create-catalog.dto.ts
-
-import { IsString, IsInt, IsBoolean, IsOptional, MaxLength, IsArray, IsNotEmpty } from 'class-validator';
+import { IsString, IsInt, MaxLength, IsArray, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateCatalogDto {
-  @ApiProperty({ description: 'Catalog name', maxLength: 20 })
+  @ApiProperty({ description: 'Catalog name', example: 'AUTOFOTON', maxLength: 20 })
   @IsString()
   @MaxLength(20)
-  name: string;
+  name_catalog: string;
 
-  @ApiProperty({ description: 'City ID' })
+  @ApiProperty({ description: 'Business unit (city name)', example: 'DIBOG' })
+  @IsString()
+  business_unit: string;
+
+  @ApiProperty({ description: 'Is active? (1 = true, 0 = false)', example: 1 })
   @IsInt()
-  city_id: number;
-
-  @ApiProperty({ description: 'Is active?', default: true, required: false })
-  @IsOptional()
-  @IsBoolean()
-  is_active?: boolean;
+  is_active: number;
 }
 
 export class CreateCatalogsWrapperDto {

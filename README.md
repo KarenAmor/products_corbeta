@@ -133,13 +133,12 @@ Usa una herramienta como **Postman** o **cURL** para interactuar con la API. Aqu
    ```
   POST /catalogs/
   {
-  "catalogs":
-  [
-    {"name": "catalog001", "city_id": 1, "isActive": 1},
-    {"name": "catalog002", "city_id": 2, "isActive": 0},
-    {"name": "catalog003", "city_id": 3, "isActive": 1},
-  ]
-  }
+    "catalogs": [
+        {"name_catalog": "AUTOFOTON", "business_unit": "D1CAL", "is_active": 1},
+        {"name_catalog": "AUTOFOTON", "business_unit": "DIMED", "is_active": 0},
+        {"name_catalog": "AUTOFOTON", "business_unit": "DIBOG", "is_active": 1}
+    ]
+   }
   ```
 
 ## Contribuir

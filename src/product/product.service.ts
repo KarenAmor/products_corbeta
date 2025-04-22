@@ -201,7 +201,7 @@ export class ProductService {
 
     return {
       response: {
-        code: 201,
+        code: 200,
         message,
         status,
       },

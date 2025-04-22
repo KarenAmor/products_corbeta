@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Catalog } from './entities/catalog.entity';
+import { City } from './entities/city.entity';
 import { LogsService } from '../logs/logs.service';
 
 @Injectable()
@@ -9,14 +10,16 @@ export class CatalogService {
   constructor(
     @InjectRepository(Catalog)
     private catalogRepository: Repository<Catalog>,
+    @InjectRepository(City)
+    private cityRepository: Repository<City>,
     private readonly logsService: LogsService,
   ) {}
 
   async createBulk(
-    catalogsData: Partial<Catalog>[],
+    rawCatalogs: any[],
     batchSize = 100,
   ): Promise<{ response: { code: number; message: string; status: string }; errors: any[] }> {
-    if (!catalogsData || catalogsData.length === 0) {
+    if (!rawCatalogs || rawCatalogs.length === 0) {
       throw new BadRequestException({
         response: {
           code: 400,
@@ -33,152 +36,162 @@ export class CatalogService {
       errors: [] as any[],
     };
 
-    // Set para validar duplicados dentro del mismo lote
     const catalogKeySet = new Set<string>();
+    const cityCache = new Map<string, number>();
 
-    await this.catalogRepository.manager.transaction(async (transactionalEntityManager) => {
-      for (let i = 0; i < catalogsData.length; i += batchSize) {
-        const batch = catalogsData.slice(i, i + batchSize);
+    await this.catalogRepository.manager.transaction(async (manager) => {
+      for (let i = 0; i < rawCatalogs.length; i += batchSize) {
+        const batch = rawCatalogs.slice(i, i + batchSize);
         const batchErrors: any[] = [];
 
-        for (const [index, catalogData] of batch.entries()) {
+        for (const [index, raw] of batch.entries()) {
           try {
             const missingFields: string[] = [];
             const invalidFields: string[] = [];
 
-            // Validar campos requeridos
-            if (typeof catalogData.name !== 'string' || !catalogData.name.trim()) {
-                missingFields.push('name');
-              }              
-            if (catalogData.city_id === undefined || catalogData.city_id === null) missingFields.push('city_id');
-            if (catalogData.is_active === undefined || catalogData.is_active === null)
+            const { name_catalog, business_unit, is_active } = raw;
+
+            if (!name_catalog || typeof name_catalog !== 'string') {
+              missingFields.push('name_catalog');
+            }
+
+            if (!business_unit || typeof business_unit !== 'string') {
+              missingFields.push('business_unit');
+            }
+
+            if (is_active === undefined || is_active === null) {
               missingFields.push('is_active');
+            }
 
-            // Si faltan campos requeridos, lanzar error
             if (missingFields.length > 0) {
-              throw new Error(`Missing, empty or null fields: ${missingFields.join(', ')}`);
+              throw new Error(`Missing or invalid fields: ${missingFields.join(', ')}`);
             }
 
-// Validar tipo de datos y longitud
-            if (typeof catalogData.name !== 'string' || catalogData.name.length > 20) {
-              invalidFields.push('name: expected string up to 20 characters');
+            const name = name_catalog.trim();
+            const businessUnitName = business_unit.trim();
+
+            if (name.length > 20) {
+              invalidFields.push('name_catalog: max 20 characters');
             }
 
-            if (typeof catalogData.city_id !== 'number') {
-              invalidFields.push('city_id: expected number');
+            if (typeof is_active !== 'number') {
+              invalidFields.push('is_active must be a number');
             }
 
-            if (typeof catalogData.is_active !== 'number') {
-              invalidFields.push('is_active: expected number (0 or 1)');
+            if (invalidFields.length > 0) {
+              throw new Error(`Invalid field values: ${invalidFields.join(', ')}`);
             }
 
-            // Validar duplicados en lote (name + city_id)
-            const uniqueKey = `${(catalogData.name || '').trim().toLowerCase()}-${catalogData.city_id}`;
+            let city_id = cityCache.get(businessUnitName);
+
+            if (!city_id) {
+              const city = await manager.findOne(City, {
+                where: { name: businessUnitName },
+              });
+
+              if (!city) {
+                throw new Error(`Business unit '${businessUnitName}' not found`);
+              }
+
+              city_id = city.id;
+              cityCache.set(businessUnitName, city_id);
+            }
+
+            const uniqueKey = `${name.toLowerCase()}-${city_id}`;
             if (catalogKeySet.has(uniqueKey)) {
-              throw new Error(`Duplicate catalog (name + city_id) in batch: '${catalogData.name}'`);
+              throw new Error(`Duplicate catalog (name + city) in batch: '${name}'`);
             }
             catalogKeySet.add(uniqueKey);
 
-            // Buscar si ya existe en base de datos
-            const existingCatalog = await transactionalEntityManager.findOne(Catalog, {
-                where: {
-                  name: catalogData.name!.trim(),
-                  city_id: catalogData.city_id,
-                },
-              });  
+            const catalogData: Partial<Catalog> = {
+              name,
+              city_id,
+              is_active,
+            };
+
+            const existing = await manager.findOne(Catalog, {
+              where: {
+                name,
+                city_id,
+              },
+            });
 
             let savedCatalog: Catalog;
 
-            // Si existe, actualizar; si no, insertar
-            if (existingCatalog) {
-              Object.assign(existingCatalog, catalogData);
-              savedCatalog = await transactionalEntityManager.save(existingCatalog);
+            if (existing) {
+              Object.assign(existing, catalogData);
+              savedCatalog = await manager.save(existing);
             } else {
               const newCatalog = this.catalogRepository.create(catalogData as Catalog);
-              savedCatalog = await transactionalEntityManager.save(newCatalog);
+              savedCatalog = await manager.save(newCatalog);
             }
 
-            // Registrar log de éxito (omitimos campos automáticos)
+            // Log de éxito
             const { created, modified, ...logRowData } = savedCatalog;
-
-            try{
-            this.logsService.log({
-              sync_type: 'API',
-              record_id: `${savedCatalog.id}`,
-              process: 'catalog',
-              row_data: logRowData,
-              event_date: new Date(),
-              result: 'successful',
-            });
-          } catch (logError) {
-            console.warn(`Failed to log success for catalog ${savedCatalog.id}: ${logError.message}`);
-          }
+            try {
+              this.logsService.log({
+                sync_type: 'API',
+                record_id: `${savedCatalog.id}`,
+                process: 'catalog',
+                row_data: logRowData,
+                event_date: new Date(),
+                result: 'successful',
+              });
+            } catch (logError) {
+              console.warn(`Failed to log success for catalog ${savedCatalog.id}: ${logError.message}`);
+            }
 
             result.catalogs.push(savedCatalog);
             result.count += 1;
           } catch (error) {
             const errorMessage = error.message || 'Unknown error';
-            // Guardar error individual en la respuesta
             batchErrors.push({
-              catalog: catalogData,
+              catalog: raw,
               error: errorMessage,
               index: i + index,
             });
 
-            // Registrar log de error
-            const { created, modified, ...logErrorData } = catalogData;
-            try{
-            this.logsService.log({
-              sync_type: 'API',
-              record_id: `INVALID_ID_${i + index}`,
-              process: 'catalog',
-              row_data: logErrorData,
-              event_date: new Date(),
-              result: 'failed',
-              error_message: errorMessage,
-            });
-          } catch (logError) {
-            console.warn(`Failed to log error for catalog at index ${i + index}: ${logError.message}`);
-          }
+            try {
+              this.logsService.log({
+                sync_type: 'API',
+                record_id: `INVALID_ID_${i + index}`,
+                process: 'catalog',
+                row_data: raw,
+                event_date: new Date(),
+                result: 'failed',
+                error_message: errorMessage,
+              });
+            } catch (logError) {
+              console.warn(`Failed to log error for catalog at index ${i + index}: ${logError.message}`);
+            }
           }
         }
 
-        // Agregar errores del batch al resultado final
         result.errors.push(...batchErrors);
       }
     });
 
-    const totalCatalogs = catalogsData.length;
-    const successfulCatalogs = result.count;
-    const failedCatalogs = result.errors.length;
+    const total = rawCatalogs.length;
+    const success = result.count;
+    const failed = result.errors.length;
 
-    let status: string;
-    let message: string;
-
-    // Construir la respuesta según el resultado
-    if (successfulCatalogs === totalCatalogs) {
-      status = 'successful';
-      message = 'Transaction Successful';
-    } else if (failedCatalogs === totalCatalogs) {
-      status = 'failed';
-      message = 'All catalogs contain invalid data';
+    if (success === 0) {
       throw new BadRequestException({
-        response: { 
-          code: 400, 
-          message, 
-          status },
+        response: {
+          code: 400,
+          message: 'All catalogs contain invalid data',
+          status: 'failed',
+        },
         errors: result.errors,
       });
-    } else {
-      status = 'partial_success';
-      message = `${successfulCatalogs} of ${totalCatalogs} catalogs inserted successfully`;
     }
 
     return {
-      response: { 
-        code: 201, 
-        message, 
-        status },
+      response: {
+        code: 200,
+        message: `${success} of ${total} catalogs inserted successfully`,
+        status: success === total ? 'successful' : 'partial_success',
+      },
       errors: result.errors,
     };
   }
