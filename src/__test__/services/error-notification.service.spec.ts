@@ -27,6 +27,7 @@ describe('ErrorNotificationService', () => {
     SMTP_FROM_NAME: 'Test System',
     SMTP_FROM_EMAIL: 'noreply@example.com',
     SMTP_ENABLED: 'true',
+    EMAIL_RECIPIENT: 'admin@example.com',
   };
   // Define un objeto con variables de entorno simuladas para la configuración SMTP.
 
@@ -97,6 +98,7 @@ describe('ErrorNotificationService', () => {
 
       expect(transporterMock.sendMail).toHaveBeenCalledWith({
         from: `"${mockEnv.SMTP_FROM_NAME}" <${mockEnv.SMTP_FROM_EMAIL}>`,
+        to: mockEnv.EMAIL_RECIPIENT,
         subject: '⚠️ System Error',
         text: `An error has been detected:\n\n${errorMessage}`,
       });
@@ -120,7 +122,7 @@ describe('ErrorNotificationService', () => {
 
       expect(transporterMock.sendMail).toHaveBeenCalledWith({
         from: `"${mockEnv.SMTP_FROM_NAME}" <${mockEnv.SMTP_FROM_EMAIL}>`,
-        to: mockEnv.SMTP_USER,
+        to: mockEnv.EMAIL_RECIPIENT,
         subject: '⚠️ System Error',
         text: `An error has been detected:\n\n${errorMessage}`,
       });
