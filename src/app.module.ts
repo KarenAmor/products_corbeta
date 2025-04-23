@@ -25,7 +25,7 @@ import { CatalogModule } from './catalog/catalog.module';
         password: configService.get<string>('DB_PASSWORD', ''),
         database: configService.get<string>('DB_NAME', 'test'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: configService.get<boolean>('DB_SYNCHRONIZE', false),
+        synchronize: false
       }),
       inject: [ConfigService],
     }),
