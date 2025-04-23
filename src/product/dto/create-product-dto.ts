@@ -1,5 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsPositive, IsBoolean, MaxLength, IsNotEmpty, IsArray } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString, IsNumber, IsPositive, IsBoolean, MaxLength, IsNotEmpty, IsArray, IsOptional, IsDate,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateProductDto {
   @ApiProperty({ description: 'Product reference', maxLength: 20 })
@@ -48,6 +51,12 @@ export class CreateProductDto {
   @IsBoolean()
   @IsNotEmpty()
   is_active: boolean;
+
+  @ApiPropertyOptional({ description: 'Creation date (optional)', type: String, format: 'date-time' })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  created?: Date;
 }
 
 export class CreateProductsWrapperDto {
