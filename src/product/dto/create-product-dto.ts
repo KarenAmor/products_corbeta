@@ -57,6 +57,12 @@ export class CreateProductDto {
   @Type(() => Date)
   @IsDate()
   created?: Date;
+
+  @ApiPropertyOptional({ description: 'Creation date (optional)', type: String, format: 'date-time' })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  modified?: Date;
 }
 
 export class CreateProductsWrapperDto {

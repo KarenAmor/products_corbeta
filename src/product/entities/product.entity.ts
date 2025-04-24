@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('products')
@@ -39,7 +39,7 @@ export class Product {
   @ApiProperty({ description: 'Creation date', type: 'string', format: 'date-time' })
   created: Date;
 
-  @Column({ type: 'timestamp', precision: 6, nullable: true })
+  @UpdateDateColumn({ type: 'timestamp', precision: 6, nullable: true, name: 'modified' })
   @ApiProperty({ description: 'Modification date', type: 'string', format: 'date-time' })
   modified: Date | null;
 }
