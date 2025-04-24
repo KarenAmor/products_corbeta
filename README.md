@@ -23,6 +23,18 @@ Los endpoints protegidos requieren los headers:
 - **username**: Correo electrónico del usuario.
 - **password**: Contraseña del usuario.
 
+Encriptacion de la contraseña: en lenguaje javascript.
+```bash
+const bcrypt = require('bcrypt');
+async function generateHash() {
+  const password = 'estoesunaprueba';
+  const salt = await bcrypt.genSalt(10);
+  const hash = await bcrypt.hash(password, salt);
+  console.log('Hash generado:', hash);
+}
+generateHash();
+```
+
 Un AuthGuard verifica la autenticidad del usuario antes de procesar la petición.
 
 - En caso de credenciales inválidas o ausencia de las mismas, se devuelve un error 401 Unauthorized.
