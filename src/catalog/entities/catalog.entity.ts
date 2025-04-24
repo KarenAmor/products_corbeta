@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn, UpdateDateColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { City} from '../entities/city.entity'
 
@@ -26,7 +26,7 @@ export class Catalog {
   @ApiProperty({ description: 'Creation date', type: 'string', format: 'date-time' })
   created: Date;
 
-  @Column({ type: 'timestamp', precision: 6, nullable: true })
-  @ApiProperty({ description: 'Modification date', type: 'string', format: 'date-time' })
-  modified: Date | null;
+  @UpdateDateColumn({ type: 'timestamp', precision: 6, nullable: true, name: 'modified' })
+    @ApiProperty({ description: 'Modification date', type: 'string', format: 'date-time' })
+    modified: Date | null;
 }
