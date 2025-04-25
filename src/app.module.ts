@@ -5,6 +5,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProductModule } from './product/product.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { PriceModule } from './price/price.module';
+
 
 @Module({
   imports: [
@@ -30,7 +32,7 @@ import { CatalogModule } from './catalog/catalog.module';
       inject: [ConfigService],
     }),
     
-    ProductModule, CatalogModule
+    ProductModule, CatalogModule, PriceModule
   ],
   controllers: [AppController],
   providers: [AppService],
