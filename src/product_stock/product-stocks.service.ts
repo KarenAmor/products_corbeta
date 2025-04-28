@@ -1,36 +1,29 @@
+// src/product-stocks/product-stocks.service.ts
+
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { ProductPrice } from './entities/product-price.entity';
-import { Catalog } from '../catalog/entities/catalog.entity';
+import { ProductStock } from './entities/product-stock.entity';
 import { City } from '../catalog/entities/city.entity';
-import { ProductPriceOperationDto } from './dto/create-product-price.dto';
+import { ProductStockOperationDto } from './dto/create-product-stock.dto';
 import { LogsService } from '../logs/logs.service';
 
 @Injectable()
-export class ProductPricesService {
+export class ProductStocksService {
   constructor(
-    @InjectRepository(ProductPrice)
-    private readonly productPriceRepository: Repository<ProductPrice>,
-    @InjectRepository(Catalog)
-    private readonly catalogRepository: Repository<Catalog>,
+    @InjectRepository(ProductStock)
+    private readonly productStockRepository: Repository<ProductStock>,
     @InjectRepository(City)
     private readonly cityRepository: Repository<City>,
     private readonly configService: ConfigService,
     private readonly logsService: LogsService,
-  ) { }
+  ) {}
 
-  /**
-   * Método para procesar un listado de operaciones de precios en lote (bulk).
-   * Puede crear, actualizar o eliminar registros en la tabla product_prices.
-   */
   async createBulk(
-    operations: ProductPriceOperationDto[],
+    operations: ProductStockOperationDto[],
     batchSize = 100,
   ): Promise<{ response: { code: number; message: string; status: string }; errors: any[] }> {
-
-    // Validar si vienen operaciones
     if (!operations || operations.length === 0) {
       throw new BadRequestException({
         response: {
@@ -42,39 +35,35 @@ export class ProductPricesService {
       });
     }
 
-    // Se obtiene el flag de configuración para permitir borrado de registros
     const DELETE_RECORD = this.configService.get<boolean>('DELETE_RECORD', true);
 
-    // Resultado acumulativo de la operación
     const result = {
       count: 0,
-      prices: [] as ProductPrice[],
+      stocks: [] as ProductStock[],
       errors: [] as any[],
     };
 
-    // Ejecutar todo dentro de una transacción
-    await this.productPriceRepository.manager.transaction(async (transactionalEntityManager) => {
+    await this.productStockRepository.manager.transaction(async (transactionalEntityManager) => {
       for (let i = 0; i < operations.length; i += batchSize) {
         const batch = operations.slice(i, i + batchSize);
         const batchErrors: any[] = [];
 
-        // Procesar cada operación del batch
         for (const [index, operation] of batch.entries()) {
           try {
-            // Validación de campos obligatorios
-            // Validación de campos obligatorios de forma detallada
-            const requiredFields = ['business_unit', 'catalog', 'product_id', 'price', 'vlr_impu_consumo', 'is_active'];
+            const requiredFields = ['business_unit', 'product_id', 'stock'];
             const missingFields = requiredFields.filter(field => {
               const value = operation[field];
               return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
             });
 
+            if (operation.is_active === undefined || operation.is_active === null) {
+              missingFields.push('is_active');
+            }
+
             if (missingFields.length > 0) {
-              // Si falta uno o más campos, generar un error detallado
               throw new Error(`Missing required field(s): ${missingFields.join(', ')}`);
             }
 
-            // Buscar la ciudad relacionada con el business_unit
             const city = await transactionalEntityManager.findOne(City, {
               where: { name: operation.business_unit },
             });
@@ -82,74 +71,60 @@ export class ProductPricesService {
             if (!city) {
               throw new Error(`City not found for business_unit ${operation.business_unit}`);
             }
-            // Buscar el catálogo dentro de la ciudad
-            const catalog = await transactionalEntityManager.findOne(Catalog, {
-              where: { name: operation.catalog, city_id: city.id },
-            });
 
-            if (!catalog) {
-              throw new Error(`Catalog not found for business_unit ${operation.business_unit} and catalog ${operation.catalog}`);
-            }
+            const city_id = city.id;
 
-            const catalog_id = catalog.id;
-
-            // Buscar si ya existe un precio para el producto en ese catálogo
-            const existingPrice = await transactionalEntityManager.findOne(ProductPrice, {
-              where: { catalog_id, product_reference: operation.product_id },
+            const existingStock = await transactionalEntityManager.findOne(ProductStock, {
+              where: { product_id: operation.product_id, city_id },
             });
 
             const now = new Date();
-            // Armar el objeto de precio
-            const productPriceData: Partial<ProductPrice> = {
-              catalog_id,
-              product_reference: operation.product_id,
-              price: operation.price,
-              vlr_impu_consumo: operation.vlr_impu_consumo,
+
+            const productStockData: Partial<ProductStock> = {
+              product_id: operation.product_id,
+              city_id,
+              stock: operation.stock,
               is_active: operation.is_active,
-              created: operation.created ?? now,
+              created: now,
+              modified: now,
             };
 
-            let savedPrice: ProductPrice | null;
+            let savedStock: ProductStock | null;
 
-            if (!existingPrice) {
-              // Si no existe, se crea nuevo
-              const newPrice = this.productPriceRepository.create(productPriceData);
-              savedPrice = await transactionalEntityManager.save(newPrice);
+            if (!existingStock) {
+              const newStock = this.productStockRepository.create(productStockData);
+              savedStock = await transactionalEntityManager.save(newStock);
             } else {
               if (operation.is_active === 0 && DELETE_RECORD) {
-                // Si existe pero is_active = 0 y DELETE_RECORD es true, eliminarlo
-                await transactionalEntityManager.remove(existingPrice);
-                savedPrice = null;
+                await transactionalEntityManager.remove(existingStock);
+                savedStock = null;
               } else {
-                // Si existe y sigue activo, actualizar el precio
-                Object.assign(existingPrice, productPriceData);
-                savedPrice = await transactionalEntityManager.save(existingPrice);
+                Object.assign(existingStock, productStockData);
+                savedStock = await transactionalEntityManager.save(existingStock);
               }
             }
 
-            // Loguear el resultado (creado, modificado o eliminado)
-            const { created, modified, ...logRowData } = savedPrice || {};
+            const { created, modified, ...logRowData } = savedStock || {};
 
-            if (savedPrice) {
+            if (savedStock) {
               await this.logsService.log({
                 sync_type: 'API',
-                record_id: savedPrice.product_reference,
-                process: 'product_price',
+                record_id: savedStock.product_id,
+                process: 'product_stock',
                 row_data: logRowData,
                 event_date: new Date(),
                 result: 'successful',
               });
-              result.prices.push(savedPrice);
+              result.stocks.push(savedStock);
               result.count += 1;
             } else {
-              // Caso eliminación
               await this.logsService.log({
                 sync_type: 'API',
                 record_id: operation.product_id,
-                process: 'product_price',
+                process: 'product_stock',
                 row_data: {
-                  catalog_id,
-                  product_reference: operation.product_id,
+                  city_id,
+                  product_id: operation.product_id,
                 },
                 event_date: new Date(),
                 result: 'deleted',
@@ -158,7 +133,6 @@ export class ProductPricesService {
             }
 
           } catch (error) {
-            // Capturar errores individuales por operación
             const errorMessage = error.message || 'Unknown error';
             batchErrors.push({
               operation,
@@ -166,29 +140,26 @@ export class ProductPricesService {
               index: i + index,
             });
 
-            // Loguear el error
             try {
               await this.logsService.log({
                 sync_type: 'API',
                 record_id: operation.product_id || `INVALID_REF_${i + index}`,
-                process: 'product_price',
+                process: 'product_stock',
                 row_data: operation,
                 event_date: new Date(),
                 result: 'failed',
                 error_message: errorMessage,
               });
             } catch (logError) {
-              console.warn(`Failed to log error for product_price at index ${i + index}: ${logError.message}`);
+              console.warn(`Failed to log error for product_stock at index ${i + index}: ${logError.message}`);
             }
           }
         }
 
-        // Agregar errores del batch al resultado general
         result.errors.push(...batchErrors);
       }
     });
 
-    // Determinar el estatus de la operación
     const total = operations.length;
     const success = result.count;
     const failed = result.errors.length;
@@ -215,7 +186,6 @@ export class ProductPricesService {
       message = `${success} of ${total} operations processed successfully`;
     }
 
-    // Devolver el resultado final
     return {
       response: {
         code: 200,
