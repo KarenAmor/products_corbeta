@@ -1,4 +1,4 @@
-import { Injectable,  BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -21,10 +21,16 @@ export class ProductPricesService {
     private readonly logsService: LogsService,
   ) { }
 
+  /**
+   * Método para procesar un listado de operaciones de precios en lote (bulk).
+   * Puede crear, actualizar o eliminar registros en la tabla product_prices.
+   */
   async createBulk(
     operations: ProductPriceOperationDto[],
     batchSize = 100,
   ): Promise<{ response: { code: number; message: string; status: string }; errors: any[] }> {
+
+    // Validar si vienen operaciones
     if (!operations || operations.length === 0) {
       throw new BadRequestException({
         response: {
@@ -36,19 +42,23 @@ export class ProductPricesService {
       });
     }
 
+    // Se obtiene el flag de configuración para permitir borrado de registros
     const DELETE_RECORD = this.configService.get<boolean>('DELETE_RECORD', true);
 
+    // Resultado acumulativo de la operación
     const result = {
       count: 0,
       prices: [] as ProductPrice[],
       errors: [] as any[],
     };
 
+    // Ejecutar todo dentro de una transacción
     await this.productPriceRepository.manager.transaction(async (transactionalEntityManager) => {
       for (let i = 0; i < operations.length; i += batchSize) {
         const batch = operations.slice(i, i + batchSize);
         const batchErrors: any[] = [];
 
+        // Procesar cada operación del batch
         for (const [index, operation] of batch.entries()) {
           try {
             // Validación de campos obligatorios
@@ -64,7 +74,7 @@ export class ProductPricesService {
               throw new Error(`Missing required field(s): ${missingFields.join(', ')}`);
             }
 
-
+            // Buscar la ciudad relacionada con el business_unit
             const city = await transactionalEntityManager.findOne(City, {
               where: { name: operation.business_unit },
             });
@@ -72,7 +82,7 @@ export class ProductPricesService {
             if (!city) {
               throw new Error(`City not found for business_unit ${operation.business_unit}`);
             }
-
+            // Buscar el catálogo dentro de la ciudad
             const catalog = await transactionalEntityManager.findOne(Catalog, {
               where: { name: operation.catalog, city_id: city.id },
             });
@@ -83,10 +93,12 @@ export class ProductPricesService {
 
             const catalog_id = catalog.id;
 
+            // Buscar si ya existe un precio para el producto en ese catálogo
             const existingPrice = await transactionalEntityManager.findOne(ProductPrice, {
               where: { catalog_id, product_reference: operation.product_id },
             });
 
+            // Armar el objeto de precio
             const productPriceData: Partial<ProductPrice> = {
               catalog_id,
               product_reference: operation.product_id,
@@ -98,19 +110,22 @@ export class ProductPricesService {
             let savedPrice: ProductPrice | null;
 
             if (!existingPrice) {
+              // Si no existe, se crea nuevo
               const newPrice = this.productPriceRepository.create(productPriceData);
               savedPrice = await transactionalEntityManager.save(newPrice);
             } else {
               if (operation.is_active === 0 && DELETE_RECORD) {
+                // Si existe pero is_active = 0 y DELETE_RECORD es true, eliminarlo
                 await transactionalEntityManager.remove(existingPrice);
                 savedPrice = null;
               } else {
+                // Si existe y sigue activo, actualizar el precio
                 Object.assign(existingPrice, productPriceData);
                 savedPrice = await transactionalEntityManager.save(existingPrice);
               }
             }
 
-            // Loguear el resultado
+            // Loguear el resultado (creado, modificado o eliminado)
             const { created, modified, ...logRowData } = savedPrice || {};
 
             if (savedPrice) {
@@ -125,6 +140,7 @@ export class ProductPricesService {
               result.prices.push(savedPrice);
               result.count += 1;
             } else {
+              // Caso eliminación
               await this.logsService.log({
                 sync_type: 'API',
                 record_id: operation.product_id,
@@ -140,6 +156,7 @@ export class ProductPricesService {
             }
 
           } catch (error) {
+            // Capturar errores individuales por operación
             const errorMessage = error.message || 'Unknown error';
             batchErrors.push({
               operation,
@@ -147,6 +164,7 @@ export class ProductPricesService {
               index: i + index,
             });
 
+            // Loguear el error
             try {
               await this.logsService.log({
                 sync_type: 'API',
@@ -163,10 +181,12 @@ export class ProductPricesService {
           }
         }
 
+        // Agregar errores del batch al resultado general
         result.errors.push(...batchErrors);
       }
     });
 
+    // Determinar el estatus de la operación
     const total = operations.length;
     const success = result.count;
     const failed = result.errors.length;
@@ -193,6 +213,7 @@ export class ProductPricesService {
       message = `${success} of ${total} operations processed successfully`;
     }
 
+    // Devolver el resultado final
     return {
       response: {
         code: 200,
@@ -203,6 +224,9 @@ export class ProductPricesService {
     };
   }
 
+  /**
+   * Método auxiliar para obtener todos los precios de productos.
+   */
   async findAll(): Promise<ProductPrice[]> {
     return this.productPriceRepository.find();
   }
