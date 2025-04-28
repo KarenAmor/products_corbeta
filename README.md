@@ -61,7 +61,7 @@ El módulo de productos ofrece las siguientes funcionalidades:
 5. **Documentación de la API**:
   Se ha utilizado Swagger para generar la documentación interactiva de la API. Para acceder a la documentación, inicie el servidor y diríjase a:
     ```bash
-    http://localhost:3000/api-docs 
+    http://localhost:3002/api-docs 
     ```
 
 Esta documentación detalla todos los endpoints disponibles, los formatos de peticiones y respuestas, así como ejemplos de uso.
@@ -122,7 +122,7 @@ Esta documentación detalla todos los endpoints disponibles, los formatos de pet
     ```bash
     npm run start:dev
     ```
-   - La API estará disponible en `http://localhost:3000` (o el puerto configurado).
+   - La API estará disponible en `http://localhost:3002` (o el puerto configurado).
 
 ## Uso
 
@@ -152,6 +152,26 @@ Usa una herramienta como **Postman** o **cURL** para interactuar con la API. Aqu
     ]
    }
   ```
+   ```
+   POST /product-prices
+   {
+    "product_prices": [
+        {"business_unit": "DICAL", "catalog": "ABCD", "product_id":"00028845212457", "price": 220900, "vlr_impu_consumo": 0, "is_active": 0},
+        {"business_unit": "DICAL", "catalog": "ABCD", "product_id":"00028845212457", "price": 220900, "vlr_impu_consumo": 0, "is_active": 0},
+      ]
+   }
+   ```
+    ```
+    POST /product-stocks
+    {
+      "product_stock": [
+         { "product_id": "REF0120", "business_unit": "DIMED", "stock": 5, "is_active": 1},
+         { "product_id": "REF0120", "business_unit": "DIMED", "stock": 5, "is_active": 1},
+         { "product_id": "REF0120", "business_unit": "DIMED", "stock": 5, "is_active": 1},
+    ]
+   }
+
+   ```
 
 ## Contribuir
 
