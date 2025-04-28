@@ -98,6 +98,7 @@ export class ProductPricesService {
               where: { catalog_id, product_reference: operation.product_id },
             });
 
+            const now = new Date();
             // Armar el objeto de precio
             const productPriceData: Partial<ProductPrice> = {
               catalog_id,
@@ -105,6 +106,7 @@ export class ProductPricesService {
               price: operation.price,
               vlr_impu_consumo: operation.vlr_impu_consumo,
               is_active: operation.is_active,
+              created: operation.created ?? now,
             };
 
             let savedPrice: ProductPrice | null;

@@ -1,5 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsString, MaxLength, Min, Max, IsArray, IsNotEmpty } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNumber, IsString, MaxLength, Min, Max, IsArray, IsNotEmpty, IsOptional, IsDate } from 'class-validator';
+import { Type } from 'class-transformer';
+
 
 export class ProductPriceOperationDto {
   @ApiProperty({ description: 'Business unit identifier', type: String })
@@ -30,6 +32,12 @@ export class ProductPriceOperationDto {
   @Min(0)
   @Max(1)
   is_active: number;
+
+  @ApiPropertyOptional({ description: 'Creation date (optional)', type: String, format: 'date-time' })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  created?: Date;
 }
 
 export class ProductPriceOperationWrapperDto {
