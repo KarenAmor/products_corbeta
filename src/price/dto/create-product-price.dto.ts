@@ -13,7 +13,7 @@ export class ProductPriceOperationDto {
   @ApiProperty({ description: 'Product reference', type: String, maxLength: 20 })
   @IsString()
   @MaxLength(20)
-  product_reference: string;
+  product_id: string;
 
   @ApiProperty({ description: 'Price of the product', type: Number, nullable: true, default: 0.0000 })
   @IsNumber()
