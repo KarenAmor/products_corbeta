@@ -1,27 +1,24 @@
-// src/product-stocks/product-stocks.service.ts
+// src/prod-uoms/prod-uoms.service.ts
 
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { ProductStock } from './entities/product-stock.entity';
-import { City } from '../catalog/entities/city.entity';
-import { ProductStockOperationDto } from './dto/create-product-stock.dto';
+import { ProdUom } from './entities/prod-uom.entity';
+import { CreateProdUomDto } from './dto/create-prod-uom.dto';
 import { LogsService } from '../logs/logs.service';
 
 @Injectable()
-export class ProductStocksService {
+export class ProdUomsService {
   constructor(
-    @InjectRepository(ProductStock)
-    private readonly productStockRepository: Repository<ProductStock>,
-    @InjectRepository(City)
-    private readonly cityRepository: Repository<City>,
+    @InjectRepository(ProdUom)
+    private readonly prodUomRepository: Repository<ProdUom>,
     private readonly configService: ConfigService,
     private readonly logsService: LogsService,
   ) {}
 
   async createBulk(
-    operations: ProductStockOperationDto[],
+    operations: CreateProdUomDto[],
     batchSize = 100,
   ): Promise<{ response: { code: number; message: string; status: string }; errors: any[] }> {
     if (!operations || operations.length === 0) {
@@ -35,22 +32,22 @@ export class ProductStocksService {
       });
     }
 
-    const DELETE_RECORD = this.configService.get<boolean>('DELETE_RECORD');
+    const DELETE_RECORD = this.configService.get<boolean>('DELETE_RECORD', true);
 
     const result = {
       count: 0,
-      stocks: [] as ProductStock[],
+      uoms: [] as ProdUom[],
       errors: [] as any[],
     };
 
-    await this.productStockRepository.manager.transaction(async (transactionalEntityManager) => {
+    await this.prodUomRepository.manager.transaction(async (manager) => {
       for (let i = 0; i < operations.length; i += batchSize) {
         const batch = operations.slice(i, i + batchSize);
         const batchErrors: any[] = [];
 
         for (const [index, operation] of batch.entries()) {
           try {
-            const requiredFields = ['business_unit', 'product_id', 'stock'];
+            const requiredFields = ['product_id', 'unit_of_measure', 'min_order_qty', 'max_order_qty', 'order_increment'];
             const missingFields = requiredFields.filter(field => {
               const value = operation[field];
               return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
@@ -64,74 +61,62 @@ export class ProductStocksService {
               throw new Error(`Missing required field(s): ${missingFields.join(', ')}`);
             }
 
-            const city = await transactionalEntityManager.findOne(City, {
-              where: { name: operation.business_unit },
-            });
-
-            if (!city) {
-              throw new Error(`City not found for business_unit ${operation.business_unit}`);
-            }
-
-            const city_id = city.id;
-
-            const existingStock = await transactionalEntityManager.findOne(ProductStock, {
-              where: { product_id: operation.product_id, city_id },
+            const existing = await manager.findOne(ProdUom, {
+              where: {
+                product_id: operation.product_id,
+                unit_of_measure: operation.unit_of_measure,
+              },
             });
 
             const now = new Date();
-
-            const productStockData: Partial<ProductStock> = {
-              product_id: operation.product_id,
-              city_id,
-              stock: operation.stock,
-              is_active: operation.is_active,
+            const data: Partial<ProdUom> = {
+              ...operation,
               created: now,
               modified: now,
             };
 
-            let savedStock: ProductStock | null;
+            let saved: ProdUom | null;
 
-            if (!existingStock) {
-              const newStock = this.productStockRepository.create(productStockData);
-              savedStock = await transactionalEntityManager.save(newStock);
+            if (!existing) {
+              const newUom = this.prodUomRepository.create(data);
+              saved = await manager.save(newUom);
             } else {
               if (operation.is_active === 0 && DELETE_RECORD) {
-                await transactionalEntityManager.remove(existingStock);
-                savedStock = null;
+                await manager.remove(existing);
+                saved = null;
               } else {
-                Object.assign(existingStock, productStockData);
-                savedStock = await transactionalEntityManager.save(existingStock);
+                Object.assign(existing, data);
+                saved = await manager.save(existing);
               }
             }
 
-            const { created, modified, ...logRowData } = savedStock || {};
+            const { created, modified, ...logData } = saved || {};
 
-            if (savedStock) {
+            if (saved) {
               await this.logsService.log({
                 sync_type: 'API',
-                record_id: savedStock.product_id,
-                process: 'product_stock',
-                row_data: logRowData,
-                event_date: new Date(),
+                record_id: saved.product_id,
+                process: 'prod_uoms',
+                row_data: logData,
+                event_date: now,
                 result: 'successful',
               });
-              result.stocks.push(savedStock);
+              result.uoms.push(saved);
               result.count += 1;
             } else {
               await this.logsService.log({
                 sync_type: 'API',
                 record_id: operation.product_id,
-                process: 'product_stock',
+                process: 'prod_uoms',
                 row_data: {
-                  city_id,
                   product_id: operation.product_id,
+                  unit_of_measure: operation.unit_of_measure,
                 },
-                event_date: new Date(),
+                event_date: now,
                 result: 'deleted',
               });
               result.count += 1;
             }
-
           } catch (error) {
             const errorMessage = error.message || 'Unknown error';
             batchErrors.push({
@@ -144,14 +129,14 @@ export class ProductStocksService {
               await this.logsService.log({
                 sync_type: 'API',
                 record_id: operation.product_id || `INVALID_REF_${i + index}`,
-                process: 'product_stock',
+                process: 'prod_uoms',
                 row_data: operation,
                 event_date: new Date(),
                 result: 'failed',
                 error_message: errorMessage,
               });
             } catch (logError) {
-              console.warn(`Failed to log error for product_stock at index ${i + index}: ${logError.message}`);
+              console.warn(`Failed to log error for prod_uoms at index ${i + index}: ${logError.message}`);
             }
           }
         }

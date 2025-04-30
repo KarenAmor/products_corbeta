@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { ProductPrice } from './entities/product-price.entity';
 import { Catalog } from '../catalog/entities/catalog.entity';
 import { City } from '../catalog/entities/city.entity';
+import { Product } from '../product/entities/product.entity'
 import { ProductPriceOperationDto } from './dto/create-product-price.dto';
 import { LogsService } from '../logs/logs.service';
 
@@ -17,6 +18,14 @@ export class ProductPricesService {
     private readonly catalogRepository: Repository<Catalog>,
     @InjectRepository(City)
     private readonly cityRepository: Repository<City>,
+    @InjectRepository(Product, 'corbeMovilConnection') // Conexión a movilven_corbeta_sales
+    private readonly productRepository: Repository<Product>,
+    @InjectRepository(Product) // Conexión a movilven_corbeta_sales_temp
+    private readonly productTempRepository: Repository<Product>,
+    @InjectRepository(Catalog, 'corbeMovilConnection') // Conexión a movilven_corbeta_sales
+    private readonly catalogCorbeMovilRepository: Repository<Catalog>,
+    @InjectRepository(Catalog) // Conexión a movilven_corbeta_sales_temp
+    private readonly catalogTempRepository: Repository<Catalog>,
     private readonly configService: ConfigService,
     private readonly logsService: LogsService,
   ) { }
@@ -29,7 +38,6 @@ export class ProductPricesService {
     operations: ProductPriceOperationDto[],
     batchSize = 100,
   ): Promise<{ response: { code: number; message: string; status: string }; errors: any[] }> {
-
     // Validar si vienen operaciones
     if (!operations || operations.length === 0) {
       throw new BadRequestException({
@@ -42,8 +50,9 @@ export class ProductPricesService {
       });
     }
 
-    // Se obtiene el flag de configuración para permitir borrado de registros
-    const DELETE_RECORD = this.configService.get<boolean>('DELETE_RECORD', true);
+    // Obtener flags de configuración
+    const DELETE_RECORD = this.configService.get<string>('DELETE_RECORD');
+    const VALIDATE_BD_TEMP = this.configService.get<boolean>('VALIDATE_BD_TEMP');
 
     // Resultado acumulativo de la operación
     const result = {
@@ -62,100 +71,131 @@ export class ProductPricesService {
         for (const [index, operation] of batch.entries()) {
           try {
             // Validación de campos obligatorios
-            // Validación de campos obligatorios de forma detallada
             const requiredFields = ['business_unit', 'catalog', 'product_id', 'price', 'vlr_impu_consumo', 'is_active'];
-            const missingFields = requiredFields.filter(field => {
+            const missingFields = requiredFields.filter((field) => {
               const value = operation[field];
               return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
             });
 
             if (missingFields.length > 0) {
-              // Si falta uno o más campos, generar un error detallado
               throw new Error(`Missing required field(s): ${missingFields.join(', ')}`);
             }
 
-            // Buscar la ciudad relacionada con el business_unit
+            // Validar existencia del producto
+            let productExists = false;
+            const productCorbeMovil = await this.productRepository.findOne({
+              where: { reference: operation.product_id }, // Asume que la columna es 'reference'
+            });
+
+            if (productCorbeMovil) {
+              productExists = true;
+            } else if (VALIDATE_BD_TEMP) {
+              const productTemp = await this.productTempRepository.findOne({
+                where: { reference: operation.product_id }, // Asume que la columna es 'reference'
+              });
+              if (productTemp) {
+                productExists = true;
+              }
+            }
+
+            if (!productExists) {
+              throw new Error(`Product with ID ${operation.product_id} does not exist in the required databases`);
+            }
+
+            // Buscar la unidad de negocio en tabla city relacionada con el business_unit
             const city = await transactionalEntityManager.findOne(City, {
               where: { name: operation.business_unit },
             });
 
             if (!city) {
-              throw new Error(`City not found for business_unit ${operation.business_unit}`);
+              throw new Error(`Business unit not found for business_unit ${operation.business_unit}`);
             }
-            // Buscar el catálogo dentro de la ciudad
-            const catalog = await transactionalEntityManager.findOne(Catalog, {
+
+            // Validar existencia del catálogo
+            // price.service.ts (fragmento de createBulk)
+            let catalogId: number | null = null;
+
+            // Solo buscar en movilven_corbeta_sales si no se encontró en temp
+            const catalogCorbeMovil = await this.catalogCorbeMovilRepository.findOne({
+              select: ['id', 'name', 'city_id'],
               where: { name: operation.catalog, city_id: city.id },
             });
 
-            if (!catalog) {
-              throw new Error(`Catalog not found for business_unit ${operation.business_unit} and catalog ${operation.catalog}`);
+            if (catalogCorbeMovil) {
+              catalogId = catalogCorbeMovil.id;
+            } else {
+              if (VALIDATE_BD_TEMP) {
+                const catalogTemp = await this.catalogTempRepository.findOne({
+                  select: ['id', 'name', 'city_id', 'is_active'],
+                  where: { name: operation.catalog, city_id: city.id },
+                });
+                if (catalogTemp) {
+                  catalogId = catalogTemp.id;
+                }
+              }
             }
 
-            const catalog_id = catalog.id;
+            if (!catalogId) {
+              throw new Error(
+                `Catalog ${operation.catalog} not found for business_unit ${operation.business_unit} in the required databases`,
+              );
+            }
 
             // Buscar si ya existe un precio para el producto en ese catálogo
             const existingPrice = await transactionalEntityManager.findOne(ProductPrice, {
-              where: { catalog_id, product_reference: operation.product_id },
+              where: { catalog_id: catalogId, product_reference: operation.product_id },
             });
 
-            const now = new Date();
+            let savedPrice: ProductPrice | null;
+            let message = "";
+
             // Armar el objeto de precio
             const productPriceData: Partial<ProductPrice> = {
-              catalog_id,
+              catalog_id: catalogId,
               product_reference: operation.product_id,
               price: operation.price,
               vlr_impu_consumo: operation.vlr_impu_consumo,
               is_active: operation.is_active,
-              created: operation.created ?? now,
+              created: operation.created ?? new Date(),
             };
 
-            let savedPrice: ProductPrice | null;
+            //(existingPrice)
+            if (existingPrice) {
 
-            if (!existingPrice) {
-              // Si no existe, se crea nuevo
-              const newPrice = this.productPriceRepository.create(productPriceData);
-              savedPrice = await transactionalEntityManager.save(newPrice);
-            } else {
-              if (operation.is_active === 0 && DELETE_RECORD) {
-                // Si existe pero is_active = 0 y DELETE_RECORD es true, eliminarlo
-                await transactionalEntityManager.remove(existingPrice);
-                savedPrice = null;
+              if (operation.is_active === 0 && DELETE_RECORD === 'true') {
+                //Eliminar
+                savedPrice = await transactionalEntityManager.remove(ProductPrice, existingPrice);
+                message = "Row Deleted";
               } else {
-                // Si existe y sigue activo, actualizar el precio
+                //Actualizar
+                console.log("Actualizar")
                 Object.assign(existingPrice, productPriceData);
                 savedPrice = await transactionalEntityManager.save(existingPrice);
+                message = "Row Updated"
+                console.log(savedPrice);
               }
+            } else {
+              //Crear
+              const newPrice = this.productPriceRepository.create(productPriceData);
+              savedPrice = await transactionalEntityManager.save(newPrice);
+              message = "Row Created";
             }
-
-            // Loguear el resultado (creado, modificado o eliminado)
-            const { created, modified, ...logRowData } = savedPrice || {};
 
             if (savedPrice) {
-              await this.logsService.log({
-                sync_type: 'API',
-                record_id: savedPrice.product_reference,
-                process: 'product_price',
-                row_data: logRowData,
-                event_date: new Date(),
-                result: 'successful',
-              });
               result.prices.push(savedPrice);
               result.count += 1;
-            } else {
-              // Caso eliminación
-              await this.logsService.log({
-                sync_type: 'API',
-                record_id: operation.product_id,
-                process: 'product_price',
-                row_data: {
-                  catalog_id,
-                  product_reference: operation.product_id,
-                },
-                event_date: new Date(),
-                result: 'deleted',
-              });
-              result.count += 1;
             }
+
+
+            const { created, modified, ...logRowData } = savedPrice;
+            await this.logsService.log({
+              sync_type: 'API',
+              record_id: operation.product_id,
+              process: 'product_price',
+              row_data: logRowData,
+              event_date: new Date(),
+              result: message + ' successful',
+            });
 
           } catch (error) {
             // Capturar errores individuales por operación
