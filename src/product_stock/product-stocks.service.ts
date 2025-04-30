@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { ProductStock } from './entities/product-stock.entity';
+import { Product } from '../product/entities/product.entity';
 import { City } from '../catalog/entities/city.entity';
 import { ProductStockOperationDto } from './dto/create-product-stock.dto';
 import { LogsService } from '../logs/logs.service';
@@ -16,6 +17,10 @@ export class ProductStocksService {
     private readonly productStockRepository: Repository<ProductStock>,
     @InjectRepository(City)
     private readonly cityRepository: Repository<City>,
+    @InjectRepository(Product, 'corbeMovilConnection') // Conexión a movilven_corbeta_sales
+    private readonly productRepository: Repository<Product>,
+    @InjectRepository(Product) // Conexión a movilven_corbeta_sales_temp
+    private readonly productTempRepository: Repository<Product>,
     private readonly configService: ConfigService,
     private readonly logsService: LogsService,
   ) {}
@@ -35,7 +40,8 @@ export class ProductStocksService {
       });
     }
 
-    const DELETE_RECORD = this.configService.get<boolean>('DELETE_RECORD');
+    const DELETE_RECORD = this.configService.get<string>('DELETE_RECORD');
+    const VALIDATE_BD_TEMP = this.configService.get<boolean>('VALIDATE_BD_TEMP');
 
     const result = {
       count: 0,
@@ -51,7 +57,7 @@ export class ProductStocksService {
         for (const [index, operation] of batch.entries()) {
           try {
             const requiredFields = ['business_unit', 'product_id', 'stock'];
-            const missingFields = requiredFields.filter(field => {
+            const missingFields = requiredFields.filter((field) => {
               const value = operation[field];
               return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
             });
@@ -64,12 +70,33 @@ export class ProductStocksService {
               throw new Error(`Missing required field(s): ${missingFields.join(', ')}`);
             }
 
+            // Validar existencia del producto
+            let productExists = false;
+            const productCorbeMovil = await this.productRepository.findOne({
+              where: { reference: operation.product_id },
+            });
+
+            if (productCorbeMovil) {
+              productExists = true;
+            } else if (VALIDATE_BD_TEMP) {
+              const productTemp = await this.productTempRepository.findOne({
+                where: { reference: operation.product_id },
+              });
+              if (productTemp) {
+                productExists = true;
+              }
+            }
+
+            if (!productExists) {
+              throw new Error(`Product with ID ${operation.product_id} does not exist in the required databases`);
+            }
+
             const city = await transactionalEntityManager.findOne(City, {
               where: { name: operation.business_unit },
             });
 
             if (!city) {
-              throw new Error(`City not found for business_unit ${operation.business_unit}`);
+              throw new Error(`Business unit not found for business_unit ${operation.business_unit}`);
             }
 
             const city_id = city.id;
@@ -78,30 +105,32 @@ export class ProductStocksService {
               where: { product_id: operation.product_id, city_id },
             });
 
-            const now = new Date();
+            let savedStock: ProductStock | null = null;
+            let message = '';
 
             const productStockData: Partial<ProductStock> = {
               product_id: operation.product_id,
               city_id,
               stock: operation.stock,
               is_active: operation.is_active,
-              created: now,
-              modified: now,
+              created: new Date(),
+              modified: new Date(),
             };
 
-            let savedStock: ProductStock | null;
-
-            if (!existingStock) {
-              const newStock = this.productStockRepository.create(productStockData);
-              savedStock = await transactionalEntityManager.save(newStock);
-            } else {
-              if (operation.is_active === 0 && DELETE_RECORD) {
+            if (existingStock) {
+              if (operation.is_active === 0 && DELETE_RECORD === 'true') {
                 await transactionalEntityManager.remove(existingStock);
-                savedStock = null;
+                message = 'Row Deleted';
               } else {
                 Object.assign(existingStock, productStockData);
                 savedStock = await transactionalEntityManager.save(existingStock);
+                message = 'Row Updated';
               }
+            } else {
+              // Solo crear si is_active no es 0
+                const newStock = this.productStockRepository.create(productStockData);
+                savedStock = await transactionalEntityManager.save(newStock);
+                message = 'Row Created';
             }
 
             const { created, modified, ...logRowData } = savedStock || {};
@@ -117,7 +146,7 @@ export class ProductStocksService {
               });
               result.stocks.push(savedStock);
               result.count += 1;
-            } else {
+            } else if (message === 'Row Deleted' || message === 'No action taken: Attempted to delete non-existent stock') {
               await this.logsService.log({
                 sync_type: 'API',
                 record_id: operation.product_id,
@@ -127,7 +156,7 @@ export class ProductStocksService {
                   product_id: operation.product_id,
                 },
                 event_date: new Date(),
-                result: 'deleted',
+                result: message === 'Row Deleted' ? 'deleted' : 'no_action',
               });
               result.count += 1;
             }

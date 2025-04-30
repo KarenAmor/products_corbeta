@@ -6,7 +6,7 @@ import { AppService } from './app.service';
 import { ProductModule } from './product/product.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { PriceModule } from './price/price.module';
-import {ProducStocktModule} from './product_stock/product-stocks.module'
+import {ProductStocktModule} from './product_stock/product-stocks.module'
 import { ProdUomsModule} from './prod_uoms/prod-uoms.module';
 import { Product } from './product/entities/product.entity'; 
 import { Catalog } from './catalog/entities/catalog.entity';
@@ -53,7 +53,7 @@ import { City } from './catalog/entities/city.entity';
       inject: [ConfigService],
     }),
     
-    ProductModule, CatalogModule, PriceModule, ProducStocktModule, ProdUomsModule
+    ProductModule, CatalogModule, PriceModule, ProductStocktModule, ProdUomsModule
   ],
   controllers: [AppController],
   providers: [AppService],

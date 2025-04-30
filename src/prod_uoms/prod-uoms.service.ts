@@ -7,12 +7,17 @@ import { ConfigService } from '@nestjs/config';
 import { ProdUom } from './entities/prod-uom.entity';
 import { CreateProdUomDto } from './dto/create-prod-uom.dto';
 import { LogsService } from '../logs/logs.service';
+import { Product } from '../product/entities/product.entity';
 
 @Injectable()
 export class ProdUomsService {
   constructor(
     @InjectRepository(ProdUom)
     private readonly prodUomRepository: Repository<ProdUom>,
+    @InjectRepository(Product, 'corbeMovilConnection') // Conexión a movilven_corbeta_sales
+    private readonly productRepository: Repository<Product>,
+    @InjectRepository(Product) // Conexión a movilven_corbeta_sales_temp
+    private readonly productTempRepository: Repository<Product>,
     private readonly configService: ConfigService,
     private readonly logsService: LogsService,
   ) {}
@@ -32,7 +37,8 @@ export class ProdUomsService {
       });
     }
 
-    const DELETE_RECORD = this.configService.get<boolean>('DELETE_RECORD', true);
+    const DELETE_RECORD = this.configService.get<string>('DELETE_RECORD', 'true');
+    const VALIDATE_BD_TEMP = this.configService.get<boolean>('VALIDATE_BD_TEMP', false);
 
     const result = {
       count: 0,
@@ -48,7 +54,7 @@ export class ProdUomsService {
         for (const [index, operation] of batch.entries()) {
           try {
             const requiredFields = ['product_id', 'unit_of_measure', 'min_order_qty', 'max_order_qty', 'order_increment'];
-            const missingFields = requiredFields.filter(field => {
+            const missingFields = requiredFields.filter((field) => {
               const value = operation[field];
               return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
             });
@@ -61,6 +67,27 @@ export class ProdUomsService {
               throw new Error(`Missing required field(s): ${missingFields.join(', ')}`);
             }
 
+            // Validar existencia del producto
+            let productExists = false;
+            const productCorbeMovil = await this.productRepository.findOne({
+              where: { reference: operation.product_id },
+            });
+
+            if (productCorbeMovil) {
+              productExists = true;
+            } else if (VALIDATE_BD_TEMP) {
+              const productTemp = await this.productTempRepository.findOne({
+                where: { reference: operation.product_id },
+              });
+              if (productTemp) {
+                productExists = true;
+              }
+            }
+
+            if (!productExists) {
+              throw new Error(`Product with ID ${operation.product_id} does not exist in the required databases`);
+            }
+
             const existing = await manager.findOne(ProdUom, {
               where: {
                 product_id: operation.product_id,
@@ -68,26 +95,28 @@ export class ProdUomsService {
               },
             });
 
-            const now = new Date();
+            let saved: ProdUom | null = null;
+            let message = '';
+
             const data: Partial<ProdUom> = {
               ...operation,
-              created: now,
-              modified: now,
+              created: new Date(),
+              modified: new Date(),
             };
 
-            let saved: ProdUom | null;
-
-            if (!existing) {
-              const newUom = this.prodUomRepository.create(data);
-              saved = await manager.save(newUom);
-            } else {
-              if (operation.is_active === 0 && DELETE_RECORD) {
+            if (existing) {
+              if (operation.is_active === 0 && DELETE_RECORD === 'true') {
                 await manager.remove(existing);
-                saved = null;
+                message = 'Row Deleted';
               } else {
                 Object.assign(existing, data);
                 saved = await manager.save(existing);
+                message = 'Row Updated';
               }
+            } else {
+                const newUom = this.prodUomRepository.create(data);
+                saved = await manager.save(newUom);
+                message = 'Row Created';
             }
 
             const { created, modified, ...logData } = saved || {};
@@ -98,12 +127,12 @@ export class ProdUomsService {
                 record_id: saved.product_id,
                 process: 'prod_uoms',
                 row_data: logData,
-                event_date: now,
+                event_date: new Date(),
                 result: 'successful',
               });
               result.uoms.push(saved);
               result.count += 1;
-            } else {
+            } else if (message === 'Row Deleted' || message === 'No action taken: Attempted to delete non-existent UOM') {
               await this.logsService.log({
                 sync_type: 'API',
                 record_id: operation.product_id,
@@ -112,11 +141,12 @@ export class ProdUomsService {
                   product_id: operation.product_id,
                   unit_of_measure: operation.unit_of_measure,
                 },
-                event_date: now,
-                result: 'deleted',
+                event_date: new Date(),
+                result: message === 'Row Deleted' ? 'deleted' : 'no_action',
               });
               result.count += 1;
             }
+
           } catch (error) {
             const errorMessage = error.message || 'Unknown error';
             batchErrors.push({

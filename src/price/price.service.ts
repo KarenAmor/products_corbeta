@@ -168,11 +168,9 @@ export class ProductPricesService {
                 message = "Row Deleted";
               } else {
                 //Actualizar
-                console.log("Actualizar")
                 Object.assign(existingPrice, productPriceData);
                 savedPrice = await transactionalEntityManager.save(existingPrice);
                 message = "Row Updated"
-                console.log(savedPrice);
               }
             } else {
               //Crear
