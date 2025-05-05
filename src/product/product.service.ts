@@ -7,7 +7,7 @@ import { LogsService } from '../logs/logs.service';
 @Injectable()
 export class ProductService {
   constructor(
-    @InjectRepository(Product)
+    @InjectRepository(Product, 'corbemovilTempConnection')
     private productRepository: Repository<Product>,
     private readonly logsService: LogsService,
   ) {}

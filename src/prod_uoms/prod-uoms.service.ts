@@ -12,11 +12,11 @@ import { Product } from '../product/entities/product.entity';
 @Injectable()
 export class ProdUomsService {
   constructor(
-    @InjectRepository(ProdUom)
+    @InjectRepository(ProdUom, 'corbemovilTempConnection')
     private readonly prodUomRepository: Repository<ProdUom>,
-    @InjectRepository(Product, 'corbeMovilConnection') // Conexión a movilven_corbeta_sales
+    @InjectRepository(Product, 'corbemovilConnection') // Conexión a movilven_corbeta_sales
     private readonly productRepository: Repository<Product>,
-    @InjectRepository(Product) // Conexión a movilven_corbeta_sales_temp
+    @InjectRepository(Product, 'corbemovilTempConnection') // Conexión a movilven_corbeta_sales_temp
     private readonly productTempRepository: Repository<Product>,
     private readonly configService: ConfigService,
     private readonly logsService: LogsService,

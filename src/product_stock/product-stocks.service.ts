@@ -13,16 +13,16 @@ import { LogsService } from '../logs/logs.service';
 @Injectable()
 export class ProductStocksService {
   constructor(
-    @InjectRepository(ProductStock)
-    private readonly productStockRepository: Repository<ProductStock>,
-    @InjectRepository(City)
+    @InjectRepository(ProductStock, 'corbemovilTempConnection')
+    private readonly productStockTempRepository: Repository<ProductStock>,
+    @InjectRepository(City, 'corbemovilConnection')
     private readonly cityRepository: Repository<City>,
-    @InjectRepository(Product, 'corbeMovilConnection') // Conexión a movilven_corbeta_sales
+    @InjectRepository(Product, 'corbemovilConnection') // Conexión a movilven_corbeta_sales
     private readonly productRepository: Repository<Product>,
-    @InjectRepository(Product) // Conexión a movilven_corbeta_sales_temp
+    @InjectRepository(Product, 'corbemovilTempConnection') // Conexión a movilven_corbeta_sales_temp
     private readonly productTempRepository: Repository<Product>,
     private readonly configService: ConfigService,
-    private readonly logsService: LogsService,
+    private readonly logsService: LogsService
   ) {}
 
   async createBulk(
@@ -49,7 +49,7 @@ export class ProductStocksService {
       errors: [] as any[],
     };
 
-    await this.productStockRepository.manager.transaction(async (transactionalEntityManager) => {
+    await this.productStockTempRepository.manager.transaction(async (transactionalEntityManager) => {
       for (let i = 0; i < operations.length; i += batchSize) {
         const batch = operations.slice(i, i + batchSize);
         const batchErrors: any[] = [];
@@ -91,7 +91,8 @@ export class ProductStocksService {
               throw new Error(`Product with ID ${operation.product_id} does not exist in the required databases`);
             }
 
-            const city = await transactionalEntityManager.findOne(City, {
+            //Valida la existencia de la unidad de negocio
+            const city = await this.cityRepository.findOne({
               where: { name: operation.business_unit },
             });
 
@@ -110,7 +111,7 @@ export class ProductStocksService {
 
             const productStockData: Partial<ProductStock> = {
               product_id: operation.product_id,
-              city_id,
+              city_id: city.id,
               stock: operation.stock,
               is_active: operation.is_active,
               created: new Date(),
@@ -119,22 +120,21 @@ export class ProductStocksService {
 
             if (existingStock) {
               if (operation.is_active === 0 && DELETE_RECORD === 'true') {
-                await transactionalEntityManager.remove(existingStock);
+                savedStock = await this.productStockTempRepository.save(existingStock);
                 message = 'Row Deleted';
               } else {
                 Object.assign(existingStock, productStockData);
-                savedStock = await transactionalEntityManager.save(existingStock);
+                savedStock = await this.productStockTempRepository.save(existingStock);
                 message = 'Row Updated';
               }
             } else {
-              // Solo crear si is_active no es 0
-                const newStock = this.productStockRepository.create(productStockData);
-                savedStock = await transactionalEntityManager.save(newStock);
+                savedStock = await this.productStockTempRepository.save(productStockData);
                 message = 'Row Created';
             }
 
             const { created, modified, ...logRowData } = savedStock || {};
 
+            console.log(savedStock)
             if (savedStock) {
               await this.logsService.log({
                 sync_type: 'API',
@@ -146,21 +146,7 @@ export class ProductStocksService {
               });
               result.stocks.push(savedStock);
               result.count += 1;
-            } else if (message === 'Row Deleted' || message === 'No action taken: Attempted to delete non-existent stock') {
-              await this.logsService.log({
-                sync_type: 'API',
-                record_id: operation.product_id,
-                process: 'product_stock',
-                row_data: {
-                  city_id,
-                  product_id: operation.product_id,
-                },
-                event_date: new Date(),
-                result: message === 'Row Deleted' ? 'deleted' : 'no_action',
-              });
-              result.count += 1;
-            }
-
+            } 
           } catch (error) {
             const errorMessage = error.message || 'Unknown error';
             batchErrors.push({

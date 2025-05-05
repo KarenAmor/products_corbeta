@@ -8,9 +8,9 @@ import { ErrorNotificationService } from '../utils/error-notification.service';
 import { LogsModule } from '../logs/logs.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ProdUom, Product]),
+  imports: [TypeOrmModule.forFeature([ProdUom, Product], 'corbemovilTempConnection'),
 
-  TypeOrmModule.forFeature([Product], 'corbeMovilConnection'),
+  TypeOrmModule.forFeature([Product], 'corbemovilConnection'),
     LogsModule
   ],
   controllers: [ProdUomsController],

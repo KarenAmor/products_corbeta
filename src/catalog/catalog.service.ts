@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config'
 import { Repository } from 'typeorm';
 import { Catalog } from './entities/catalog.entity';
 import { City } from './entities/city.entity';
@@ -8,10 +9,13 @@ import { LogsService } from '../logs/logs.service';
 @Injectable()
 export class CatalogService {
   constructor(
-    @InjectRepository(Catalog)
+    @InjectRepository(Catalog, 'corbemovilTempConnection')
+    private catalogTempRepository: Repository<Catalog>,
+    @InjectRepository(Catalog, 'corbemovilConnection')
     private catalogRepository: Repository<Catalog>,
-    @InjectRepository(City)
+    @InjectRepository(City, 'corbemovilConnection')
     private cityRepository: Repository<City>,
+    private readonly configService: ConfigService,
     private readonly logsService: LogsService,
   ) {}
 
@@ -29,6 +33,9 @@ export class CatalogService {
         errors: [],
       });
     }
+
+      // Obtener flags de configuración
+      const VALIDATE_BD_TEMP = this.configService.get<boolean>('VALIDATE_BD_TEMP');
 
     const result = {
       count: 0,
@@ -85,7 +92,8 @@ export class CatalogService {
             let city_id = cityCache.get(businessUnitName);
 
             if (!city_id) {
-              const city = await manager.findOne(City, {
+              const city = await this.cityRepository.findOne( {
+                select: ['id', 'name'],
                 where: { name: businessUnitName },
               });
 
@@ -109,21 +117,23 @@ export class CatalogService {
               is_active,
             };
 
-            const existing = await manager.findOne(Catalog, {
-              where: {
-                name,
-                city_id,
-              },
-            });
+            let existing: any = null;
+
+						if (VALIDATE_BD_TEMP)
+						{
+							existing = await this.catalogTempRepository.findOne({select: ['id', 'name', 'city_id'], where: {name,city_id,}});
+						}else{
+							existing = await this.catalogRepository.findOne({select: ['id', 'name', 'city_id'],where: {name,city_id,}});
+						}
 
             let savedCatalog: Catalog;
 
             if (existing) {
               Object.assign(existing, catalogData);
-              savedCatalog = await manager.save(existing);
+              savedCatalog = await this.catalogTempRepository.save(existing);
             } else {
               const newCatalog = this.catalogRepository.create(catalogData as Catalog);
-              savedCatalog = await manager.save(newCatalog);
+              savedCatalog = await this.catalogTempRepository.save(newCatalog);
             }
 
             // Log de éxito

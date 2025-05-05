@@ -9,9 +9,9 @@ import { ProductPricesService } from './price.service';
 import { LogsModule } from '../logs/logs.module';
 import { ErrorNotificationService} from '../utils/error-notification.service'
 @Module({
-  imports: [TypeOrmModule.forFeature([ProductPrice, Catalog, City, Product]),
+  imports: [TypeOrmModule.forFeature([ProductPrice, Product, Catalog], 'corbemovilTempConnection'),
   // Entidades para la conexión corbeMovilConnection (movilven_corbeta_sales)
-  TypeOrmModule.forFeature([Product, Catalog, City], 'corbeMovilConnection'),
+  TypeOrmModule.forFeature([Product, Catalog, City], 'corbemovilConnection'),
   LogsModule,
 ],
   controllers: [ProductPricesController],

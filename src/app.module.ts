@@ -4,15 +4,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProductModule } from './product/product.module';
-import { CatalogModule } from './catalog/catalog.module';
-import { PriceModule } from './price/price.module';
-import {ProductStocktModule} from './product_stock/product-stocks.module'
-import { ProdUomsModule} from './prod_uoms/prod-uoms.module';
-import { Product } from './product/entities/product.entity'; 
-import { Catalog } from './catalog/entities/catalog.entity';
-import { City } from './catalog/entities/city.entity';
-
-
+ import {CatalogModule} from './catalog/catalog.module';
+ import {PriceModule} from './price/price.module';
+ import {ProductStocktModule} from './product_stock/product-stocks.module';
+ import {ProdUomsModule}  from './prod_uoms/prod-uoms.module';
+ 
 @Module({
   imports: [
     // ConfigModule para manejar variables de entorno
@@ -20,42 +16,43 @@ import { City } from './catalog/entities/city.entity';
       isGlobal: true, // Hace que ConfigModule esté disponible globalmente
       envFilePath: '.env', // Especifica el archivo .env
     }),
-    
-    // Configuración de TypeORM usando ConfigService
+ 
     TypeOrmModule.forRootAsync({
+      name: 'corbemovilTempConnection',
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         type: 'mysql' as const,
-        host: configService.get<string>('DB_HOST', 'localhost'),
-        port: configService.get<number>('DB_PORT', 3306),
-        username: configService.get<string>('DB_USERNAME', 'root'),
-        password: configService.get<string>('DB_PASSWORD', ''),
-        database: configService.get<string>('DB_NAME', 'test'),
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: false
-      }),
-      inject: [ConfigService],
-    }),
-
-    TypeOrmModule.forRootAsync({
-      name: 'corbeMovilConnection', // Nombre único para la segunda conexión
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'mysql' as const,
-        host: configService.get<string>('DB_HOST', 'localhost'),
-        port: configService.get<number>('DB_PORT', 3306),
-        username: configService.get<string>('DB_USERNAME', 'root'),
-        password: configService.get<string>('DB_PASSWORD', ''),
-        database: configService.get<string>('DB_NAME_CORBEMOVIL', 'movilven_corbeta_sales'),
-        entities: [Product, Catalog, City], // Entidades específicas para esta DB
         synchronize: false,
       }),
       inject: [ConfigService],
     }),
-    
+ 
+    TypeOrmModule.forRootAsync({
+      name: 'corbemovilConnection',
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'mysql' as const,
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_NAME_CORBEMOVIL'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: false,
+      }),
+      inject: [ConfigService],
+    }),
+ 
     ProductModule, CatalogModule, PriceModule, ProductStocktModule, ProdUomsModule
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
+ 

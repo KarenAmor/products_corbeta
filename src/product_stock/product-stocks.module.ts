@@ -10,8 +10,8 @@ import { ErrorNotificationService } from '../utils/error-notification.service';
 import { LogsModule } from '../logs/logs.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ProductStock, Catalog, City, Product ]),
-  TypeOrmModule.forFeature([Product, Catalog, City], 'corbeMovilConnection'),
+  imports: [TypeOrmModule.forFeature([ProductStock, Catalog, City, Product ], 'corbemovilTempConnection'),
+  TypeOrmModule.forFeature([Product, Catalog, City], 'corbemovilConnection'),
   LogsModule
 ],
   controllers: [ProductStocksController],

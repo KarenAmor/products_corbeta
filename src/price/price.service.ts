@@ -12,19 +12,17 @@ import { LogsService } from '../logs/logs.service';
 @Injectable()
 export class ProductPricesService {
   constructor(
-    @InjectRepository(ProductPrice)
-    private readonly productPriceRepository: Repository<ProductPrice>,
-    @InjectRepository(Catalog)
-    private readonly catalogRepository: Repository<Catalog>,
-    @InjectRepository(City)
+    @InjectRepository(ProductPrice, 'corbemovilTempConnection')
+    private readonly productPriceTempRepository: Repository<ProductPrice>,
+    @InjectRepository(City, 'corbemovilConnection')
     private readonly cityRepository: Repository<City>,
-    @InjectRepository(Product, 'corbeMovilConnection') // Conexión a movilven_corbeta_sales
+    @InjectRepository(Product, 'corbemovilConnection') // Conexión a movilven_corbeta_sales
     private readonly productRepository: Repository<Product>,
-    @InjectRepository(Product) // Conexión a movilven_corbeta_sales_temp
+    @InjectRepository(Product, 'corbemovilTempConnection') // Conexión a movilven_corbeta_sales_temp
     private readonly productTempRepository: Repository<Product>,
-    @InjectRepository(Catalog, 'corbeMovilConnection') // Conexión a movilven_corbeta_sales
+    @InjectRepository(Catalog, 'corbemovilConnection') // Conexión a movilven_corbeta_sales
     private readonly catalogCorbeMovilRepository: Repository<Catalog>,
-    @InjectRepository(Catalog) // Conexión a movilven_corbeta_sales_temp
+    @InjectRepository(Catalog, 'corbemovilTempConnection') // Conexión a movilven_corbeta_sales_temp
     private readonly catalogTempRepository: Repository<Catalog>,
     private readonly configService: ConfigService,
     private readonly logsService: LogsService,
@@ -62,7 +60,7 @@ export class ProductPricesService {
     };
 
     // Ejecutar todo dentro de una transacción
-    await this.productPriceRepository.manager.transaction(async (transactionalEntityManager) => {
+    await this.productPriceTempRepository.manager.transaction(async (transactionalEntityManager) => {
       for (let i = 0; i < operations.length; i += batchSize) {
         const batch = operations.slice(i, i + batchSize);
         const batchErrors: any[] = [];
@@ -84,6 +82,7 @@ export class ProductPricesService {
             // Validar existencia del producto
             let productExists = false;
             const productCorbeMovil = await this.productRepository.findOne({
+              select: ['reference'],
               where: { reference: operation.product_id }, // Asume que la columna es 'reference'
             });
 
@@ -91,6 +90,7 @@ export class ProductPricesService {
               productExists = true;
             } else if (VALIDATE_BD_TEMP) {
               const productTemp = await this.productTempRepository.findOne({
+                select: ['reference'],
                 where: { reference: operation.product_id }, // Asume que la columna es 'reference'
               });
               if (productTemp) {
@@ -103,7 +103,8 @@ export class ProductPricesService {
             }
 
             // Buscar la unidad de negocio en tabla city relacionada con el business_unit
-            const city = await transactionalEntityManager.findOne(City, {
+            const city = await this.cityRepository.findOne({
+              select: ['name'],
               where: { name: operation.business_unit },
             });
 
@@ -115,7 +116,7 @@ export class ProductPricesService {
             // price.service.ts (fragmento de createBulk)
             let catalogId: number | null = null;
 
-            // Solo buscar en movilven_corbeta_sales si no se encontró en temp
+            // Buscar en movilven_corbeta_sales
             const catalogCorbeMovil = await this.catalogCorbeMovilRepository.findOne({
               select: ['id', 'name', 'city_id'],
               where: { name: operation.catalog, city_id: city.id },
@@ -126,7 +127,7 @@ export class ProductPricesService {
             } else {
               if (VALIDATE_BD_TEMP) {
                 const catalogTemp = await this.catalogTempRepository.findOne({
-                  select: ['id', 'name', 'city_id', 'is_active'],
+                  select: ['id', 'name', 'city_id'],
                   where: { name: operation.catalog, city_id: city.id },
                 });
                 if (catalogTemp) {
@@ -142,7 +143,7 @@ export class ProductPricesService {
             }
 
             // Buscar si ya existe un precio para el producto en ese catálogo
-            const existingPrice = await transactionalEntityManager.findOne(ProductPrice, {
+            const existingPrice = await this.productPriceTempRepository.findOne({
               where: { catalog_id: catalogId, product_reference: operation.product_id },
             });
 
@@ -164,18 +165,18 @@ export class ProductPricesService {
 
               if (operation.is_active === 0 && DELETE_RECORD === 'true') {
                 //Eliminar
-                savedPrice = await transactionalEntityManager.remove(ProductPrice, existingPrice);
+                savedPrice = await this.productPriceTempRepository.remove(existingPrice);
                 message = "Row Deleted";
               } else {
                 //Actualizar
                 Object.assign(existingPrice, productPriceData);
-                savedPrice = await transactionalEntityManager.save(existingPrice);
+                savedPrice = await this.productPriceTempRepository.save(productPriceData);
                 message = "Row Updated"
               }
             } else {
               //Crear
-              const newPrice = this.productPriceRepository.create(productPriceData);
-              savedPrice = await transactionalEntityManager.save(newPrice);
+              const newRow = this.productPriceTempRepository.create(productPriceData);
+              savedPrice = await this.productPriceTempRepository.save(newRow);
               message = "Row Created";
             }
 
@@ -184,6 +185,7 @@ export class ProductPricesService {
               result.count += 1;
             }
 
+            console.log("Ver: savedPrice ", savedPrice)
 
             const { created, modified, ...logRowData } = savedPrice;
             await this.logsService.log({
