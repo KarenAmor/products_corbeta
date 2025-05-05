@@ -81,9 +81,10 @@ export class CatalogService {
               invalidFields.push('name_catalog: max 20 characters');
             }
 
-            if (typeof is_active !== 'number') {
-              invalidFields.push('is_active must be a number');
+            if (typeof is_active !== 'number' || ![0, 1].includes(is_active)) {
+              invalidFields.push('is_active must be 0 or 1');
             }
+            
 
             if (invalidFields.length > 0) {
               throw new Error(`Invalid field values: ${invalidFields.join(', ')}`);
@@ -137,18 +138,17 @@ export class CatalogService {
             }
 
             // Log de éxito
-            const { created, modified, ...logRowData } = savedCatalog;
             try {
               this.logsService.log({
                 sync_type: 'API',
-                record_id: `${savedCatalog.id}`,
+                record_id: name,
                 process: 'catalog',
-                row_data: logRowData,
+                row_data: JSON.parse(JSON.stringify(raw)),
                 event_date: new Date(),
                 result: 'successful',
               });
             } catch (logError) {
-              console.warn(`Failed to log success for catalog ${savedCatalog.id}: ${logError.message}`);
+              console.warn(`Failed to log success for catalog ${savedCatalog.name}: ${logError.message}`);
             }
 
             result.catalogs.push(savedCatalog);
@@ -162,11 +162,12 @@ export class CatalogService {
             });
 
             try {
+              const recordId = raw?.name_catalog || `INVALID_INDEX_${i + index}`;
               this.logsService.log({
                 sync_type: 'API',
-                record_id: `INVALID_ID_${i + index}`,
+                record_id: recordId,
                 process: 'catalog',
-                row_data: raw,
+                row_data: JSON.parse(JSON.stringify(raw)),
                 event_date: new Date(),
                 result: 'failed',
                 error_message: errorMessage,
@@ -183,7 +184,6 @@ export class CatalogService {
 
     const total = rawCatalogs.length;
     const success = result.count;
-    const failed = result.errors.length;
 
     if (success === 0) {
       throw new BadRequestException({
