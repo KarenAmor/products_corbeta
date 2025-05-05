@@ -114,7 +114,7 @@ export class CatalogController {
       return {
         response: {
           code: result.response.code,
-          menssage: result.response.message,
+          message: result.response.message,
           status: result.response.status,
         },
         errores: result.errors,
@@ -147,7 +147,7 @@ export class CatalogController {
           {
             response: {
               code: response.response.code,
-              menssage: response.response.message,
+              message: response.response.message,
               status: response.response.status,
             },
             errores: response.errors,

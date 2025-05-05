@@ -80,13 +80,7 @@ export class ProductController {
 
     try {
       const productsData = wrapper.products;
-      const result = await this.productService.createBulk(
-        productsData.map(product => ({
-          ...product,
-          is_active: product.is_active ? 1 : 0,
-        })),
-        Number(batchSize),
-      );
+      const result = await this.productService.createBulk(productsData, Number(batchSize));
 
       if (result.errors.length > 0) {
         const errorDetails = result.errors
@@ -113,7 +107,7 @@ export class ProductController {
       return {
         response: {
           code: result.response.code,
-          menssage: result.response.message,
+          message: result.response.message,
           status: result.response.status,
         },
         errores: result.errors,
@@ -147,7 +141,7 @@ export class ProductController {
           {
             response: {
               code: response.response.code,
-              menssage: response.response.message,
+              message: response.response.message,
               status: response.response.status,
             },
             errores: response.errors,

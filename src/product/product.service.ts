@@ -56,8 +56,14 @@ export class ProductService {
             if (!productData.vat_group?.trim()) missingFields.push('vat_group');
             if (productData.vat === undefined || productData.vat === null) missingFields.push('vat');
             if (!productData.packing_to?.trim()) missingFields.push('packing_to');
-            if (productData.is_active === undefined || productData.is_active === null)
+            // Validación de is_active
+            if (productData.is_active === undefined || productData.is_active === null) {
               missingFields.push('is_active');
+            } else if (typeof productData.is_active !== 'number' || ![0, 1].includes(productData.is_active)) {
+              invalidFields.push(`is_active debe ser un número (0 o 1), se recibió ${productData.is_active}`);
+            }
+
+            
 
             if (missingFields.length > 0) {
               throw new Error(`Missing, empty or null fields: ${missingFields.join(', ')}`);
@@ -99,9 +105,6 @@ export class ProductService {
             if (typeof productData.vat !== 'number') {
               invalidFields.push(`vat: expected number, got ${typeof productData.vat}`);
             }
-            if (typeof productData.is_active !== 'number') {
-              invalidFields.push(`is_active: expected number, got ${typeof productData.is_active}`);
-            }
 
             if (invalidFields.length > 0) {
               throw new Error(`Invalid fields: ${invalidFields.join('; ')}`);
@@ -126,15 +129,12 @@ export class ProductService {
               savedProduct = await transactionalEntityManager.save(newProduct);
             }
 
-            // Excluir 'modified' y 'created' del log
-            const { modified, created, ...logRowData } = savedProduct;
-
             try {
               this.logsService.log({
                 sync_type: 'API',
-                record_id: savedProduct.reference,
+                record_id: reference,
                 process: 'product',
-                row_data: logRowData,
+                row_data: productData,
                 event_date: new Date(),
                 result: 'successful',
               });
@@ -152,14 +152,12 @@ export class ProductService {
               index: i + index,
             });
 
-            // Opcional: si quieres excluir 'modified' y 'created' del log de error (en caso de que existan)
-            const { modified, created, ...logErrorData } = productData;
             try {
               this.logsService.log({
                 sync_type: 'API',
                 record_id: productData.reference?.trim() || `INVALID_REF_${i + index}`,
                 process: 'product',
-                row_data: logErrorData,
+                row_data: productData,
                 event_date: new Date(),
                 result: 'failed',
                 error_message: errorMessage,

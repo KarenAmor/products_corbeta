@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsString, IsNumber, IsPositive, IsBoolean, MaxLength, IsNotEmpty, IsArray, IsOptional, IsDate,
+  IsString, IsNumber, IsPositive, IsIn, MaxLength, IsNotEmpty, IsArray, IsOptional, IsDate,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -48,9 +48,10 @@ export class CreateProductDto {
   packing_to: string;
 
   @ApiProperty({ description: 'Is active?', default: 1 })
-  @IsBoolean()
+  @IsNumber()
   @IsNotEmpty()
-  is_active: boolean;
+  @IsIn([0, 1])
+  is_active: number;
 
   @ApiPropertyOptional({ description: 'Creation date (optional)', type: String, format: 'date-time' })
   @IsOptional()

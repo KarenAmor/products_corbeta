@@ -43,7 +43,6 @@ export class CatalogService {
       errors: [] as any[],
     };
 
-    const catalogKeySet = new Set<string>();
     const cityCache = new Map<string, number>();
 
     await this.catalogRepository.manager.transaction(async (manager) => {
@@ -105,12 +104,6 @@ export class CatalogService {
               city_id = city.id;
               cityCache.set(businessUnitName, city_id);
             }
-
-            const uniqueKey = `${name.toLowerCase()}-${city_id}`;
-            if (catalogKeySet.has(uniqueKey)) {
-              throw new Error(`Duplicate catalog (name + city) in batch: '${name}'`);
-            }
-            catalogKeySet.add(uniqueKey);
 
             const catalogData: Partial<Catalog> = {
               name,

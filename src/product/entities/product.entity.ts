@@ -31,8 +31,8 @@ export class Product {
   @ApiProperty({ description: 'Destination packing unit', required: false })
   packing_to?: string;
 
-  @Column({ type: 'tinyint', width: 4, unsigned: true, default: 1 })
-  @ApiProperty({ description: 'Is active?', default: 1 })
+  @Column({ type: 'tinyint', nullable: false, default: 1 })
+  @ApiProperty({ description: 'Is active?', default: 1, enum: [0, 1] })
   is_active: number;
 
   @CreateDateColumn({ type: 'timestamp', precision: 6, default: () => 'CURRENT_TIMESTAMP(6)' })
