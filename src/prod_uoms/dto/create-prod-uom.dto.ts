@@ -1,4 +1,4 @@
-import { IsString, IsInt, Min, MaxLength, IsIn, ValidateNested, IsArray } from 'class-validator';
+import { IsString, IsInt, Min, MaxLength, IsNumber, ValidateNested, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateProdUomDto {
@@ -21,7 +21,7 @@ export class CreateProdUomDto {
   @Min(0)
   order_increment: number;
 
-  @IsIn([0, 1])
+  @IsNumber()
   is_active: number;
 }
 

@@ -79,6 +79,11 @@ export class ProductPricesService {
               throw new Error(`Missing required field(s): ${missingFields.join(', ')}`);
             }
 
+            const isActiveValue = operation['is_active'];
+            if (isActiveValue !== 0 && isActiveValue !== 1) {
+              throw new Error(`Invalid value for is_active: ${isActiveValue}. Only 0 or 1 are allowed.`);
+            }
+
             // Validar existencia del producto
             let productExists = false;
             const productCorbeMovil = await this.productRepository.findOne({
@@ -185,16 +190,14 @@ export class ProductPricesService {
               result.count += 1;
             }
 
-            console.log("Ver: savedPrice ", savedPrice)
 
-            const { created, modified, ...logRowData } = savedPrice;
             await this.logsService.log({
               sync_type: 'API',
               record_id: operation.product_id,
               process: 'product_price',
-              row_data: logRowData,
+              row_data: operation,
               event_date: new Date(),
-              result: message + ' successful',
+              result: message,
             });
 
           } catch (error) {

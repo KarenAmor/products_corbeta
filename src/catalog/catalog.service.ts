@@ -121,31 +121,38 @@ export class CatalogService {
 						}
 
             let savedCatalog: Catalog;
+            let message = '';
 
             if (existing) {
               Object.assign(existing, catalogData);
               savedCatalog = await this.catalogTempRepository.save(existing);
+              message = 'Row Updated';
             } else {
-              const newCatalog = this.catalogRepository.create(catalogData as Catalog);
+              const newCatalog = this.catalogTempRepository.create(catalogData as Catalog);
               savedCatalog = await this.catalogTempRepository.save(newCatalog);
+              message = 'Row Created';
+            }
+
+            if(savedCatalog){
+              result.catalogs.push(savedCatalog);
+              result.count += 1;
             }
 
             // Log de éxito
             try {
               this.logsService.log({
                 sync_type: 'API',
-                record_id: name,
+                record_id: raw.name_catalog,
                 process: 'catalog',
                 row_data: JSON.parse(JSON.stringify(raw)),
                 event_date: new Date(),
-                result: 'successful',
+                result: message,
               });
             } catch (logError) {
               console.warn(`Failed to log success for catalog ${savedCatalog.name}: ${logError.message}`);
             }
 
-            result.catalogs.push(savedCatalog);
-            result.count += 1;
+            
           } catch (error) {
             const errorMessage = error.message || 'Unknown error';
             batchErrors.push({
@@ -155,10 +162,9 @@ export class CatalogService {
             });
 
             try {
-              const recordId = raw?.name_catalog || `INVALID_INDEX_${i + index}`;
               this.logsService.log({
                 sync_type: 'API',
-                record_id: recordId,
+                record_id: raw.name_catalog,
                 process: 'catalog',
                 row_data: JSON.parse(JSON.stringify(raw)),
                 event_date: new Date(),

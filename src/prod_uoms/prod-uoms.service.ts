@@ -13,7 +13,7 @@ import { Product } from '../product/entities/product.entity';
 export class ProdUomsService {
   constructor(
     @InjectRepository(ProdUom, 'corbemovilTempConnection')
-    private readonly prodUomRepository: Repository<ProdUom>,
+    private readonly prodUomTempRepository: Repository<ProdUom>,
     @InjectRepository(Product, 'corbemovilConnection') // Conexión a movilven_corbeta_sales
     private readonly productRepository: Repository<Product>,
     @InjectRepository(Product, 'corbemovilTempConnection') // Conexión a movilven_corbeta_sales_temp
@@ -46,7 +46,7 @@ export class ProdUomsService {
       errors: [] as any[],
     };
 
-    await this.prodUomRepository.manager.transaction(async (manager) => {
+    await this.prodUomTempRepository.manager.transaction(async (manager) => {
       for (let i = 0; i < operations.length; i += batchSize) {
         const batch = operations.slice(i, i + batchSize);
         const batchErrors: any[] = [];
@@ -65,6 +65,10 @@ export class ProdUomsService {
 
             if (missingFields.length > 0) {
               throw new Error(`Missing required field(s): ${missingFields.join(', ')}`);
+            }
+            const isActiveValue = operation['is_active'];
+            if (isActiveValue !== 0 && isActiveValue !== 1) {
+              throw new Error(`Invalid value for is_active: ${isActiveValue}. Only 0 or 1 are allowed.`);
             }
 
             // Validar existencia del producto
@@ -90,8 +94,7 @@ export class ProdUomsService {
 
             const existing = await manager.findOne(ProdUom, {
               where: {
-                product_id: operation.product_id,
-                unit_of_measure: operation.unit_of_measure,
+                product_id: operation.product_id
               },
             });
 
@@ -106,46 +109,31 @@ export class ProdUomsService {
 
             if (existing) {
               if (operation.is_active === 0 && DELETE_RECORD === 'true') {
-                await manager.remove(existing);
+                saved = await this.prodUomTempRepository.remove(existing);
                 message = 'Row Deleted';
               } else {
                 Object.assign(existing, data);
-                saved = await manager.save(existing);
+                saved = await this.prodUomTempRepository.save(existing);
                 message = 'Row Updated';
               }
             } else {
-                const newUom = this.prodUomRepository.create(data);
-                saved = await manager.save(newUom);
+                const newUom = this.prodUomTempRepository.create(data);
+                saved = await this.prodUomTempRepository.save(newUom);
                 message = 'Row Created';
             }
-
-            const { created, modified, ...logData } = saved || {};
-
-            if (saved) {
-              await this.logsService.log({
-                sync_type: 'API',
-                record_id: saved.product_id,
-                process: 'prod_uoms',
-                row_data: logData,
-                event_date: new Date(),
-                result: 'successful',
-              });
+            if(saved){
               result.uoms.push(saved);
               result.count += 1;
-            } else if (message === 'Row Deleted' || message === 'No action taken: Attempted to delete non-existent UOM') {
+            }
+
               await this.logsService.log({
                 sync_type: 'API',
                 record_id: operation.product_id,
                 process: 'prod_uoms',
-                row_data: {
-                  product_id: operation.product_id,
-                  unit_of_measure: operation.unit_of_measure,
-                },
+                row_data: operation,
                 event_date: new Date(),
-                result: message === 'Row Deleted' ? 'deleted' : 'no_action',
+                result: message,
               });
-              result.count += 1;
-            }
 
           } catch (error) {
             const errorMessage = error.message || 'Unknown error';

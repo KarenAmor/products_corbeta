@@ -10,7 +10,7 @@ export class ProductService {
     @InjectRepository(Product, 'corbemovilTempConnection')
     private productRepository: Repository<Product>,
     private readonly logsService: LogsService,
-  ) {}
+  ) { }
 
   async createBulk(
     productsData: Partial<Product>[],
@@ -63,7 +63,7 @@ export class ProductService {
               invalidFields.push(`is_active debe ser un número (0 o 1), se recibió ${productData.is_active}`);
             }
 
-            
+
 
             if (missingFields.length > 0) {
               throw new Error(`Missing, empty or null fields: ${missingFields.join(', ')}`);
@@ -120,14 +120,23 @@ export class ProductService {
             // Validación de referencia existente en la base de datos
             const existingProduct = await transactionalEntityManager.findOne(Product, { where: { reference } });
             let savedProduct: Product;
+            let message = '';
 
             if (existingProduct) {
               Object.assign(existingProduct, productData);
               savedProduct = await transactionalEntityManager.save(existingProduct);
+              message = 'Row Updated';
             } else {
               const newProduct = this.productRepository.create(productData as Product);
               savedProduct = await transactionalEntityManager.save(newProduct);
+              message = 'Row Created';
             }
+
+            if (savedProduct) {
+              result.products.push(savedProduct);
+              result.count += 1;
+            }
+
 
             try {
               this.logsService.log({
@@ -136,14 +145,13 @@ export class ProductService {
                 process: 'product',
                 row_data: productData,
                 event_date: new Date(),
-                result: 'successful',
+                result: message,
               });
             } catch (logError) {
               console.warn(`Failed to log success for product ${reference}: ${logError.message}`);
             }
 
-            result.products.push(savedProduct);
-            result.count += 1;
+
           } catch (error) {
             const errorMessage = error.message || 'Unknown error';
             batchErrors.push({

@@ -70,6 +70,11 @@ export class ProductStocksService {
               throw new Error(`Missing required field(s): ${missingFields.join(', ')}`);
             }
 
+            const isActiveValue = operation['is_active'];
+            if (isActiveValue !== 0 && isActiveValue !== 1) {
+              throw new Error(`Invalid value for is_active: ${isActiveValue}. Only 0 or 1 are allowed.`);
+            }
+
             // Validar existencia del producto
             let productExists = false;
             const productCorbeMovil = await this.productRepository.findOne({
@@ -132,21 +137,20 @@ export class ProductStocksService {
                 message = 'Row Created';
             }
 
-            const { created, modified, ...logRowData } = savedStock || {};
-
-            console.log(savedStock)
             if (savedStock) {
-              await this.logsService.log({
-                sync_type: 'API',
-                record_id: savedStock.product_id,
-                process: 'product_stock',
-                row_data: logRowData,
-                event_date: new Date(),
-                result: 'successful',
-              });
               result.stocks.push(savedStock);
               result.count += 1;
             } 
+
+            await this.logsService.log({
+              sync_type: 'API',
+              record_id: operation.product_id,
+              process: 'product_stock',
+              row_data: operation,
+              event_date: new Date(),
+              result: message,
+            });
+
           } catch (error) {
             const errorMessage = error.message || 'Unknown error';
             batchErrors.push({
