@@ -1,13 +1,13 @@
 // src/prod-uoms/entities/prod-uom.entity.ts
 
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, PrimaryColumn } from 'typeorm';
+import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryColumn } from 'typeorm';
 
 @Entity('prod_uoms')
 export class ProdUom {
   @PrimaryColumn({ type: 'varchar', length: 20 })
   product_id: string;
 
-  @PrimaryColumn({ type: 'varchar', length: 10 })
+  @Column({ type: 'varchar', length: 10 })
   unit_of_measure: string;
 
   @Column({ type: 'int', nullable: false })
