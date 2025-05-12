@@ -122,7 +122,7 @@ export class ProductPricesController {
 
         try {
           await this.errorNotificationService.sendErrorEmail(
-            `Errors processing product prices:\n${errorDetails}`,
+            `Error al recibir información de Precios de Productos: \n${errorDetails}`,
           );
         } catch (emailError) {
           console.error('Failed to send error notification email:', emailError.message);
@@ -156,7 +156,7 @@ export class ProductPricesController {
 
           try {
             await this.errorNotificationService.sendErrorEmail(
-              `Errors processing product prices:\n${errorDetails}`,
+              `Error al recibir información de Precios de Productos:\n${errorDetails}`,
             );
           } catch (emailError) {
             console.error('Failed to send error notification email:', emailError.message);
@@ -180,7 +180,7 @@ export class ProductPricesController {
       // Si es otro tipo de error, envía una notificación crítica
       try {
         await this.errorNotificationService.sendErrorEmail(
-          `Critical error in processProductPrices: ${error.message}`,
+          `Error al recibir información de Precios de Productos: ${error.message}`,
         );
       } catch (emailError) {
         console.error('Failed to send critical error notification email:', emailError.message);

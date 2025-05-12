@@ -144,7 +144,7 @@ export class ProductStocksController {
   
           try {
             await this.errorNotificationService.sendErrorEmail(
-              `Errors processing product stocks:\n${errorDetails}`,
+              `Error al recibir información de inventario de productos:\n${errorDetails}`,
             );
           } catch (emailError) {
             console.error('Failed to send critical error notification email:', emailError.message);

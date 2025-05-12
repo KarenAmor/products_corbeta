@@ -92,12 +92,11 @@ export class ProductController {
           })
           .join('\n');
 
-        console.log('Intentando enviar correo de error con detalles:', errorDetails);
         try {
           await this.errorNotificationService.sendErrorEmail(
             `Errors creating products in bulk:\n${errorDetails}`,
           );
-          console.log('Correo de error enviado exitosamente');
+          
         } catch (emailError) {
           console.error('Error al enviar correo de notificación:', emailError.message);
         }
@@ -126,12 +125,11 @@ export class ProductController {
             })
             .join('\n');
 
-          console.log('Intentando enviar correo de error para BadRequestException:', errorDetails);
           try {
             await this.errorNotificationService.sendErrorEmail(
-              `Errors creating products in bulk:\n${errorDetails}`,
+              `Error al recibir información de Productos: \n${errorDetails}`,
             );
-            console.log('Correo de error enviado exitosamente');
+
           } catch (emailError) {
             console.error('Error al enviar correo de notificación:', emailError.message);
           }
@@ -151,12 +149,11 @@ export class ProductController {
       }
 
       // Enviar correo para errores críticos
-      console.log('Intentando enviar correo para error crítico:', error.message);
       try {
         await this.errorNotificationService.sendErrorEmail(
           `Critical error in createBulk: ${error.message}`,
         );
-        console.log('Correo de error crítico enviado exitosamente');
+        
       } catch (emailError) {
         console.error('Error al enviar correo de notificación crítica:', emailError.message);
       }

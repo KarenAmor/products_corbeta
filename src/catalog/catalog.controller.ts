@@ -99,13 +99,12 @@ export class CatalogController {
           })
           .join('\n');
   
-        console.log('Attempting to send error email with details:', errorDetails);
   
         try {
           await this.errorNotificationService.sendErrorEmail(
-            `Errors creating catalogs in bulk:\n${errorDetails}`,
+            `Error al recibir informacion de catalogos:\n${errorDetails}`,
           );
-          console.log('Error email sent successfully');
+        
         } catch (emailError) {
           console.error('Failed to send error notification email:', emailError.message);
         }
@@ -131,13 +130,12 @@ export class CatalogController {
             })
             .join('\n');
   
-          console.log('Attempting to send error email for HttpException:', errorDetails);
   
           try {
             await this.errorNotificationService.sendErrorEmail(
-              `Errors creating catalogs in bulk:\n${errorDetails}`,
+              `Error al recibir información de catalogos:\n${errorDetails}`,
             );
-            console.log('Error email sent successfully');
+           
           } catch (emailError) {
             console.error('Failed to send error notification email:', emailError.message);
           }
@@ -156,12 +154,11 @@ export class CatalogController {
         );
       }
   
-      console.log('Attempting to send critical error email:', error.message);
       try {
         await this.errorNotificationService.sendErrorEmail(
-          `Critical error in createBulk: ${error.message}`,
+          `Error al recibir información de catalogos: ${error.message}`,
         );
-        console.log('Critical error email sent successfully');
+        
       } catch (emailError) {
         console.error('Failed to send critical error notification:', emailError.message);
       }

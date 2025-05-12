@@ -146,7 +146,7 @@ import {
   
             try {
               await this.errorNotificationService.sendErrorEmail(
-                `Errors processing product UOMs:\n${errorDetails}`,
+                `Error al recibir informacion de unidades de medida de productos:\n${errorDetails}`,
               );
             } catch (emailError) {
               console.error('Failed to send critical error notification email:', emailError.message);

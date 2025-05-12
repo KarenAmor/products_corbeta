@@ -60,7 +60,7 @@ export class ProductService {
             if (productData.is_active === undefined || productData.is_active === null) {
               missingFields.push('is_active');
             } else if (typeof productData.is_active !== 'number' || ![0, 1].includes(productData.is_active)) {
-              invalidFields.push(`is_active debe ser un número (0 o 1), se recibió ${productData.is_active}`);
+              invalidFields.push(`is_active were a number (0 o 1) ${productData.is_active}`);
             }
 
 

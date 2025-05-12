@@ -38,7 +38,6 @@ export class ErrorNotificationService {
 
   async sendErrorEmail(errorMessage: string) {
     if (!this.enabled) {
-      console.log('Error notification email is disabled.');
       return;
     }
     // Define un método asíncrono para enviar un correo de notificación de errores, que recibe un mensaje de error como parámetro.
@@ -46,8 +45,8 @@ export class ErrorNotificationService {
     const mailOptions = {
       from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
       to: process.env.EMAIL_RECIPIENT, 
-      subject: '⚠️ System Error',
-      text: `An error has been detected:\n\n${errorMessage}`,
+      subject: '⚠️ Error sincronizador de bajada corbemovil',
+      text: `Se ha detectado un error:\n\n${errorMessage}`,
     };
     // Define las opciones del correo:
     // - from: remitente con nombre y dirección de correo obtenidos de las variables de entorno.
@@ -58,8 +57,6 @@ export class ErrorNotificationService {
     try {
       await this.transporter.sendMail(mailOptions);
       // Intenta enviar el correo usando el transporter con las opciones definidas.
-
-      console.log('Error email sent.');
       // Si el envío es exitoso, registra un mensaje en la consola indicando que el correo fue enviado.
     } catch (error) {
       console.error('Error sending email:', error);
