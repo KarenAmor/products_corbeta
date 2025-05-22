@@ -109,6 +109,7 @@ export class CatalogService {
               name,
               city_id,
               is_active,
+              created: new Date()
             };
 
             let existing: any = null;

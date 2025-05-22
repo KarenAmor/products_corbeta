@@ -35,7 +35,7 @@ export class Product {
   @ApiProperty({ description: 'Is active?', default: 1, enum: [0, 1] })
   is_active: number;
 
-  @CreateDateColumn({ type: 'timestamp', precision: 6, default: () => 'CURRENT_TIMESTAMP(6)' })
+  @CreateDateColumn({ type: 'datetime', precision: 6, default: () => 'CURRENT_TIMESTAMP(6)' })
   @ApiProperty({ description: 'Creation date', type: 'string', format: 'date-time' })
   created: Date;
 

@@ -122,6 +122,8 @@ export class ProductService {
             let savedProduct: Product;
             let message = '';
 
+            productData.created = new Date()
+            
             if (existingProduct) {
               Object.assign(existingProduct, productData);
               savedProduct = await transactionalEntityManager.save(existingProduct);

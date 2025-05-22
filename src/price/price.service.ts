@@ -16,26 +16,25 @@ export class ProductPricesService {
     private readonly productPriceTempRepository: Repository<ProductPrice>,
     @InjectRepository(City, 'corbemovilConnection')
     private readonly cityRepository: Repository<City>,
-    @InjectRepository(Product, 'corbemovilConnection') // Conexión a movilven_corbeta_sales
+    @InjectRepository(Product, 'corbemovilConnection')
     private readonly productRepository: Repository<Product>,
-    @InjectRepository(Product, 'corbemovilTempConnection') // Conexión a movilven_corbeta_sales_temp
+    @InjectRepository(Product, 'corbemovilTempConnection')
     private readonly productTempRepository: Repository<Product>,
-    @InjectRepository(Catalog, 'corbemovilConnection') // Conexión a movilven_corbeta_sales
+    @InjectRepository(Catalog, 'corbemovilConnection')
     private readonly catalogCorbeMovilRepository: Repository<Catalog>,
-    @InjectRepository(Catalog, 'corbemovilTempConnection') // Conexión a movilven_corbeta_sales_temp
+    @InjectRepository(Catalog, 'corbemovilTempConnection')
     private readonly catalogTempRepository: Repository<Catalog>,
     private readonly configService: ConfigService,
     private readonly logsService: LogsService,
-  ) { }
+  ) {
+    console.log('ProductPricesService initialized');
+  }
 
-  /**
-   * Método para procesar un listado de operaciones de precios en lote (bulk).
-   * Puede crear, actualizar o eliminar registros en la tabla product_prices.
-   */
   async createBulk(
     operations: ProductPriceOperationDto[],
     batchSize = 100,
   ): Promise<{ response: { code: number; message: string; status: string }; errors: any[] }> {
+
     // Validar si vienen operaciones
     if (!operations || operations.length === 0) {
       throw new BadRequestException({
@@ -61,6 +60,7 @@ export class ProductPricesService {
 
     // Ejecutar todo dentro de una transacción
     await this.productPriceTempRepository.manager.transaction(async (transactionalEntityManager) => {
+      
       for (let i = 0; i < operations.length; i += batchSize) {
         const batch = operations.slice(i, i + batchSize);
         const batchErrors: any[] = [];
@@ -88,7 +88,7 @@ export class ProductPricesService {
             let productExists = false;
             const productCorbeMovil = await this.productRepository.findOne({
               select: ['reference'],
-              where: { reference: operation.product_id }, // Asume que la columna es 'reference'
+              where: { reference: operation.product_id },
             });
 
             if (productCorbeMovil) {
@@ -96,7 +96,7 @@ export class ProductPricesService {
             } else if (VALIDATE_BD_TEMP) {
               const productTemp = await this.productTempRepository.findOne({
                 select: ['reference'],
-                where: { reference: operation.product_id }, // Asume que la columna es 'reference'
+                where: { reference: operation.product_id },
               });
               if (productTemp) {
                 productExists = true;
@@ -107,9 +107,9 @@ export class ProductPricesService {
               throw new Error(`Product with ID ${operation.product_id} does not exist in the required databases`);
             }
 
-            // Buscar la unidad de negocio en tabla city relacionada con el business_unit
+            // Buscar la unidad de negocio en tabla city
             const city = await this.cityRepository.findOne({
-              select: ['name'],
+              select: ['id','name'],
               where: { name: operation.business_unit },
             });
 
@@ -118,10 +118,8 @@ export class ProductPricesService {
             }
 
             // Validar existencia del catálogo
-            // price.service.ts (fragmento de createBulk)
             let catalogId: number | null = null;
 
-            // Buscar en movilven_corbeta_sales
             const catalogCorbeMovil = await this.catalogCorbeMovilRepository.findOne({
               select: ['id', 'name', 'city_id'],
               where: { name: operation.catalog, city_id: city.id },
@@ -129,15 +127,13 @@ export class ProductPricesService {
 
             if (catalogCorbeMovil) {
               catalogId = catalogCorbeMovil.id;
-            } else {
-              if (VALIDATE_BD_TEMP) {
-                const catalogTemp = await this.catalogTempRepository.findOne({
-                  select: ['id', 'name', 'city_id'],
-                  where: { name: operation.catalog, city_id: city.id },
-                });
-                if (catalogTemp) {
-                  catalogId = catalogTemp.id;
-                }
+            } else if (VALIDATE_BD_TEMP) {
+              const catalogTemp = await this.catalogTempRepository.findOne({
+                select: ['id', 'name', 'city_id'],
+                where: { name: operation.catalog, city_id: city.id },
+              });
+              if (catalogTemp) {
+                catalogId = catalogTemp.id;
               }
             }
 
@@ -147,7 +143,7 @@ export class ProductPricesService {
               );
             }
 
-            // Buscar si ya existe un precio para el producto en ese catálogo
+            // Buscar si ya existe un precio
             const existingPrice = await this.productPriceTempRepository.findOne({
               where: { catalog_id: catalogId, product_reference: operation.product_id },
             });
@@ -165,21 +161,16 @@ export class ProductPricesService {
               created: operation.created ?? new Date(),
             };
 
-            //(existingPrice)
             if (existingPrice) {
-
               if (operation.is_active === 0 && DELETE_RECORD === 'true') {
-                //Eliminar
                 savedPrice = await this.productPriceTempRepository.remove(existingPrice);
                 message = "Row Deleted";
               } else {
-                //Actualizar
                 Object.assign(existingPrice, productPriceData);
                 savedPrice = await this.productPriceTempRepository.save(productPriceData);
-                message = "Row Updated"
+                message = "Row Updated";
               }
             } else {
-              //Crear
               const newRow = this.productPriceTempRepository.create(productPriceData);
               savedPrice = await this.productPriceTempRepository.save(newRow);
               message = "Row Created";
@@ -189,8 +180,6 @@ export class ProductPricesService {
               result.prices.push(savedPrice);
               result.count += 1;
             }
-
-
             await this.logsService.log({
               sync_type: 'API',
               record_id: operation.product_id,
@@ -201,8 +190,8 @@ export class ProductPricesService {
             });
 
           } catch (error) {
-            // Capturar errores individuales por operación
             const errorMessage = error.message || 'Unknown error';
+            console.error(`Error in operation ${i + index + 1}:`, errorMessage);
             batchErrors.push({
               operation,
               error: errorMessage,
@@ -226,9 +215,9 @@ export class ProductPricesService {
           }
         }
 
-        // Agregar errores del batch al resultado general
         result.errors.push(...batchErrors);
       }
+      console.log('Transaction completed');
     });
 
     // Determinar el estatus de la operación
@@ -245,6 +234,7 @@ export class ProductPricesService {
     } else if (failed === total) {
       status = 'failed';
       message = 'All operations contain invalid data';
+      console.log('All operations failed');
       throw new BadRequestException({
         response: {
           code: 400,
@@ -258,7 +248,6 @@ export class ProductPricesService {
       message = `${success} of ${total} operations processed successfully`;
     }
 
-    // Devolver el resultado final
     return {
       response: {
         code: 200,
