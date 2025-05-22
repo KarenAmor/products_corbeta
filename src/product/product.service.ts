@@ -122,13 +122,13 @@ export class ProductService {
             let savedProduct: Product;
             let message = '';
 
-            productData.created = new Date()
-            
+           
             if (existingProduct) {
               Object.assign(existingProduct, productData);
               savedProduct = await transactionalEntityManager.save(existingProduct);
               message = 'Row Updated';
             } else {
+              productData.created = new Date()
               const newProduct = this.productRepository.create(productData as Product);
               savedProduct = await transactionalEntityManager.save(newProduct);
               message = 'Row Created';
