@@ -78,6 +78,7 @@ export class ProductStocksService {
             // Validar existencia del producto
             let productExists = false;
             const productCorbeMovil = await this.productRepository.findOne({
+              select: ['reference'],
               where: { reference: operation.product_id },
             });
 
@@ -85,6 +86,7 @@ export class ProductStocksService {
               productExists = true;
             } else if (VALIDATE_BD_TEMP) {
               const productTemp = await this.productTempRepository.findOne({
+                select: ['reference'],
                 where: { reference: operation.product_id },
               });
               if (productTemp) {
@@ -98,6 +100,7 @@ export class ProductStocksService {
 
             //Valida la existencia de la unidad de negocio
             const city = await this.cityRepository.findOne({
+              select: ['id','name'],
               where: { name: operation.business_unit },
             });
 
@@ -107,7 +110,7 @@ export class ProductStocksService {
 
             const city_id = city.id;
 
-            const existingStock = await transactionalEntityManager.findOne(ProductStock, {
+            const existingStock = await this.productStockTempRepository.findOne({
               where: { product_id: operation.product_id, city_id },
             });
 
@@ -125,7 +128,7 @@ export class ProductStocksService {
 
             if (existingStock) {
               if (operation.is_active === 0 && DELETE_RECORD === 'true') {
-                savedStock = await this.productStockTempRepository.save(existingStock);
+                savedStock = await this.productStockTempRepository.remove(existingStock);
                 message = 'Row Deleted';
               } else {
                 Object.assign(existingStock, productStockData);
@@ -133,7 +136,8 @@ export class ProductStocksService {
                 message = 'Row Updated';
               }
             } else {
-                savedStock = await this.productStockTempRepository.save(productStockData);
+              const newRow = this.productStockTempRepository.create(productStockData)
+                savedStock = await this.productStockTempRepository.save(newRow);
                 message = 'Row Created';
             }
 
