@@ -13,7 +13,7 @@ export class CleanStringsPipe implements PipeTransform {
     cleaned = cleaned.replace(/ñ/g, 'n').replace(/Ñ/g, 'N');
 
     // Eliminar caracteres especiales, permitiendo solo letras, números, espacios y guiones
-    cleaned = cleaned.replace(/[^a-zA-Z0-9\s-]/g, '');
+    cleaned = cleaned.replace(/[^a-zA-Z0-9\s_-]/g, '');
 
     // Eliminar espacios múltiples y recortar
     cleaned = cleaned.trim().replace(/\s+/g, ' ');
