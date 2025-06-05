@@ -3,23 +3,24 @@ import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
 @Injectable()
 export class CleanStringsPipe implements PipeTransform {
   // Método para limpiar un string, reemplazando tildes, eñes y símbolos no deseados
-  private cleanString(value: string): string {
-    if (typeof value !== 'string') return value;
+ private cleanString(value: string): string {
+  if (typeof value !== 'string') return value;
 
-    // Normalizar el string para descomponer caracteres con tildes (e.g., á → a + ´)
-    let cleaned = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  // Normalizar el string para descomponer caracteres con tildes (e.g., á → a + ´)
+  let cleaned = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-    // Reemplazar eñes
-    cleaned = cleaned.replace(/ñ/g, 'n').replace(/Ñ/g, 'N');
+  // Reemplazar eñes
+  cleaned = cleaned.replace(/ñ/g, 'n').replace(/Ñ/g, 'N');
 
-    // Eliminar caracteres especiales, permitiendo solo letras, números, espacios y guiones
-    cleaned = cleaned.replace(/[^a-zA-Z0-9\s_-]/g, '');
+  // Permitir letras, números, espacios y los caracteres + . / & - _
+  cleaned = cleaned.replace(/[^a-zA-Z0-9\s+./&_-]/g, '');
 
-    // Eliminar espacios múltiples y recortar
-    cleaned = cleaned.trim().replace(/\s+/g, ' ');
+  // Eliminar espacios múltiples y recortar
+  cleaned = cleaned.trim().replace(/\s+/g, ' ');
 
-    return cleaned;
-  }
+  return cleaned;
+}
+
 
   // Método para limpiar recursivamente un objeto o arreglo
   private cleanObject(value: any): any {
