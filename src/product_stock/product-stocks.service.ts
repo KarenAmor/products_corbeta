@@ -41,7 +41,7 @@ export class ProductStocksService {
     }
 
     const DELETE_RECORD = this.configService.get<string>('DELETE_RECORD');
-    const VALIDATE_BD_TEMP = this.configService.get<boolean>('VALIDATE_BD_TEMP');
+    const VALIDATE_BD_TEMP = this.configService.get<string>('VALIDATE_BD_TEMP');
 
     const result = {
       count: 0,
@@ -84,7 +84,7 @@ export class ProductStocksService {
 
             if (productCorbeMovil) {
               productExists = true;
-            } else if (VALIDATE_BD_TEMP) {
+            } else if (VALIDATE_BD_TEMP === 'true') {
               const productTemp = await this.productTempRepository.findOne({
                 select: ['reference'],
                 where: { reference: operation.product_id },

@@ -49,7 +49,7 @@ export class ProductPricesService {
 
     // Obtener flags de configuración
     const DELETE_RECORD = this.configService.get<string>('DELETE_RECORD');
-    const VALIDATE_BD_TEMP = this.configService.get<boolean>('VALIDATE_BD_TEMP');
+    const VALIDATE_BD_TEMP = this.configService.get<string>('VALIDATE_BD_TEMP');
 
     // Resultado acumulativo de la operación
     const result = {
@@ -93,7 +93,7 @@ export class ProductPricesService {
 
             if (productCorbeMovil) {
               productExists = true;
-            } else if (VALIDATE_BD_TEMP) {
+            } else if (VALIDATE_BD_TEMP === 'true') {
               const productTemp = await this.productTempRepository.findOne({
                 select: ['reference'],
                 where: { reference: operation.product_id },
@@ -127,7 +127,7 @@ export class ProductPricesService {
 
             if (catalogCorbeMovil) {
               catalogId = catalogCorbeMovil.id;
-            } else if (VALIDATE_BD_TEMP) {
+            } else if (VALIDATE_BD_TEMP === 'true') {
               const catalogTemp = await this.catalogTempRepository.findOne({
                 select: ['id', 'name', 'city_id'],
                 where: { name: operation.catalog, city_id: city.id },

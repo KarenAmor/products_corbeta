@@ -35,7 +35,7 @@ export class CatalogService {
     }
 
       // Obtener flags de configuración
-      const VALIDATE_BD_TEMP = this.configService.get<boolean>('VALIDATE_BD_TEMP');
+      const VALIDATE_BD_TEMP = this.configService.get<string>('VALIDATE_BD_TEMP');
 
     const result = {
       count: 0,
@@ -114,7 +114,7 @@ export class CatalogService {
 
             let existing: any = null;
 
-						if (VALIDATE_BD_TEMP)
+						if (VALIDATE_BD_TEMP === 'true')
 						{
 							existing = await this.catalogTempRepository.findOne({select: ['id', 'name', 'city_id'], where: {name,city_id,}});
 						}else{
