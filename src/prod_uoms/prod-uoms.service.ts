@@ -20,7 +20,7 @@ export class ProdUomsService {
     private readonly productTempRepository: Repository<Product>,
     private readonly configService: ConfigService,
     private readonly logsService: LogsService,
-  ) {}
+  ) { }
 
   async createBulk(
     operations: CreateProdUomDto[],
@@ -107,6 +107,8 @@ export class ProdUomsService {
               modified: new Date(),
             };
 
+            const updateUom: Partial<Product> = { packing: operation.unit_of_measure };
+
             if (existing) {
               if (operation.is_active === 0 && DELETE_RECORD === 'true') {
                 saved = await this.prodUomTempRepository.remove(existing);
@@ -115,25 +117,32 @@ export class ProdUomsService {
                 Object.assign(existing, data);
                 saved = await this.prodUomTempRepository.save(existing);
                 message = 'Row Updated';
+
+                if (saved)
+                  await this.productTempRepository.update({ reference: saved.product_id }, updateUom);
               }
             } else {
-                const newUom = this.prodUomTempRepository.create(data);
-                saved = await this.prodUomTempRepository.save(newUom);
-                message = 'Row Created';
+              const newUom = this.prodUomTempRepository.create(data);
+              saved = await this.prodUomTempRepository.save(newUom);
+              message = 'Row Created';
+
+              if (saved)
+                await this.productTempRepository.update({ reference: saved.product_id }, updateUom);
             }
-            if(saved){
+
+            if (saved) {
               result.uoms.push(saved);
               result.count += 1;
             }
 
-              await this.logsService.log({
-                sync_type: 'API',
-                record_id: operation.product_id,
-                process: 'prod_uoms',
-                row_data: operation,
-                event_date: new Date(),
-                result: message,
-              });
+            await this.logsService.log({
+              sync_type: 'API',
+              record_id: operation.product_id,
+              process: 'prod_uoms',
+              row_data: operation,
+              event_date: new Date(),
+              result: message,
+            });
 
           } catch (error) {
             const errorMessage = error.message || 'Unknown error';
