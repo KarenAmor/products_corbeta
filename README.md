@@ -135,10 +135,10 @@ Usa una herramienta como **Postman** o **cURL** para interactuar con la API. Aqu
   {
   "products":
   [
-    {"reference": "PROD001", "name": "Mouse", "vat": 5.00, "isActive": 1},
-    {"reference": "PROD002", "name": "Monitor", "vat": 10.00, "isActive": true}
-    {"reference": "PROD003", "name": "Mouse", "vat": 5.00, "isActive": 1},
-    {"reference": "PROD004", "name": "Monitor", "vat": 10.00, "isActive": true}
+    {"reference": "PROD001", "name": "Mouse", "vat": 5.00, "is_active": 1},
+    {"reference": "PROD002", "name": "Monitor", "vat": 10.00, "is_active": true}
+    {"reference": "PROD003", "name": "Mouse", "vat": 5.00, "is_active": 1},
+    {"reference": "PROD004", "name": "Monitor", "vat": 10.00, "is_active": true}
   ]
   }
    ```
@@ -172,6 +172,19 @@ Usa una herramienta como **Postman** o **cURL** para interactuar con la API. Aqu
    }
 
    ```
+    ```
+    POST /prod-uoms
+   {
+    "product_unit_of_measure": [
+      { "product_id": "011423942731", "unit_of_measure": "UND", "min_order_qty": 2, "max_order_qty": 10, "order_increment": 1,"is_active": 1
+      },
+      { "product_id": "011423942732", "unit_of_measure": "BOX", "min_order_qty": 3, "max_order_qty": 20, "order_increment": 1,"is_active": 1
+      },
+      { "product_id": "011423942733", "unit_of_measure": "PAQ", "min_order_qty": 4, "max_order_qty": 30, "order_increment": 1,"is_active": 1
+      }
+    ]
+}
+ ```
 
 ## Contribuir
 
